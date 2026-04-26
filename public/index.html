@@ -525,32 +525,44 @@ function AdModal({ onClose, onReward, dark }) {
 
   // Trigger Adwixo interstitial fresh on every open
   React.useEffect(() => {
-    // Remove any old ad script to force reload
-    const oldScript = document.getElementById("adwixo-reload");
-    if (oldScript) oldScript.remove();
+    // Strategy: Remove ALL adwixo scripts + iframes, then re-inject
+    // This forces a completely fresh ad request every time
 
-    // Dynamically inject fresh Adwixo script so ad fires every time
-    const script = document.createElement("script");
-    script.id  = "adwixo-reload";
-    script.src = "https://adwixo.com/teg/js/interwixo.js?t=" + Date.now(); // cache bust
-    script.async = true;
-    script.setAttribute("zone", "98686");
-    document.body.appendChild(script);
+    const cleanup = () => {
+      // Remove all old adwixo scripts
+      document.querySelectorAll('script[src*="adwixo"]').forEach(s => s.remove());
+      // Remove adwixo iframes if any
+      document.querySelectorAll('iframe[src*="adwixo"]').forEach(f => f.remove());
+      // Clear adwixo global objects so it re-initializes
+      try {
+        delete window.adwixo;
+        delete window.interwixo;
+        delete window._adwixo;
+      } catch(e) {}
+    };
 
-    // Also try calling show function if already loaded
-    try {
-      if (window.adwixo && typeof window.adwixo.show === "function") {
-        window.adwixo.show();
-      }
-      if (window.interwixo && typeof window.interwixo.show === "function") {
-        window.interwixo.show();
-      }
-    } catch(e) {}
+    cleanup();
+
+    // Small delay then inject fresh script
+    const timer = setTimeout(() => {
+      const script = document.createElement("script");
+      script.src = "https://adwixo.com/teg/js/interwixo.js?zone=98686&cb=" + Date.now();
+      script.async = true;
+      script.setAttribute("zone", "98686");
+      script.onload = () => {
+        // Try all possible Adwixo API calls after load
+        setTimeout(() => {
+          try { if(window.adwixo?.show) window.adwixo.show(); } catch(e){}
+          try { if(window.interwixo?.show) window.interwixo.show(); } catch(e){}
+          try { if(window._adwixo?.show) window._adwixo.show(); } catch(e){}
+        }, 300);
+      };
+      document.head.appendChild(script);
+    }, 100);
 
     return () => {
-      // cleanup on close
-      const s = document.getElementById("adwixo-reload");
-      if (s) s.remove();
+      clearTimeout(timer);
+      cleanup();
     };
   }, []);
 
