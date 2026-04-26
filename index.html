@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>SocioGenix AI — Social Media Content Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body,#root{height:100%;width:100%;overflow:hidden}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#fafafa}
+  textarea{font-family:inherit;resize:vertical}
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#c4b5fd;border-radius:4px}
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fade-in{animation:fadeIn .3s ease}
+  .spin{animation:spin 1s linear infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useCallback } = React;
+
+// ─── API KEYS (dono fill karo) ────────────────────────────────────────────────
+// Keys Vercel ke Environment Variables mein hain — yahan kuch nahi!
+// Vercel Dashboard → Settings → Environment Variables mein daalo
+const API_BASE = ""; // Empty = same domain (Vercel automatic handle karta hai)
+
+// ─── SVG Logos ────────────────────────────────────────────────────────────────
+const LOGOS = {
+  instagram: `<svg viewBox="0 0 24 24" width="100%" height="100%"><defs><radialGradient id="ig1" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#ig1)"/><path d="M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z" fill="#fff"/><path d="M16.5 7a.75.75 0 100 1.5.75.75 0 000-1.5z" fill="#fff"/><rect x="4" y="4" width="16" height="16" rx="5" stroke="#fff" stroke-width="1.5" fill="none"/></svg>`,
+  youtube:   `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="5" fill="#FF0000"/><path d="M10 8.5l6 3.5-6 3.5V8.5z" fill="#fff"/></svg>`,
+  facebook:  `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="5" fill="#1877F2"/><path d="M16 8h-2a1 1 0 00-1 1v2h3l-.5 3H13v7h-3v-7H8v-3h2V9a4 4 0 014-4h2v3z" fill="#fff"/></svg>`,
+  twitter:   `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="5" fill="#000"/><path d="M17.5 4h2.5l-5.5 6.3L21 20h-5l-3.5-4.6L8 20H5.5l5.8-6.6L3.5 4H8.7l3.2 4.2L17.5 4zm-.9 14.4h1.4L7.5 5.4H6l10.6 13z" fill="#fff"/></svg>`,
+  linkedin:  `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="5" fill="#0A66C2"/><path d="M7 9H5v10h2V9zM6 8a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM19 19h-2v-5c0-1.1-.9-2-2-2s-2 .9-2 2v5h-2V9h2v1.4A3.5 3.5 0 0119 13v6z" fill="#fff"/></svg>`,
+  tiktok:    `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="5" fill="#010101"/><path d="M17.5 6.5a3.5 3.5 0 01-3.5-3.5h-2v10a1.5 1.5 0 11-1.5-1.5c.18 0 .34.04.5.1V9a4.5 4.5 0 104.5 4.5V8.9a6.5 6.5 0 003.5 1.03V7.5a3.5 3.5 0 01-1-.03z" fill="#fff"/><path d="M9 14.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" fill="#EE1D52"/><path d="M17.5 7.47A3.5 3.5 0 0114 3.97V6.5a3.5 3.5 0 003.5 3.5V7.47z" fill="#69C9D0"/></svg>`,
+  pinterest: `<svg viewBox="0 0 24 24" width="100%" height="100%"><rect width="24" height="24" rx="5" fill="#E60023"/><path d="M12 2C6.48 2 2 6.48 2 12c0 4.24 2.65 7.86 6.39 9.29-.09-.78-.17-1.98.04-2.83.18-.77 1.22-5.17 1.22-5.17s-.31-.63-.31-1.56c0-1.46.85-2.55 1.9-2.55.9 0 1.33.67 1.33 1.48 0 .9-.57 2.25-.87 3.5-.25 1.05.52 1.9 1.54 1.9 1.85 0 3.09-2.37 3.09-5.16 0-2.12-1.45-3.71-4.1-3.71-2.99 0-4.85 2.23-4.85 4.73 0 .86.24 1.47.62 1.93.17.2.19.28.13.51-.04.17-.15.56-.19.72-.06.23-.25.31-.46.23-1.3-.53-1.91-1.95-1.91-3.55 0-2.63 2.2-5.8 6.57-5.8 3.52 0 5.83 2.57 5.83 5.33 0 3.65-2.01 6.38-4.97 6.38-1 0-1.93-.53-2.25-1.14l-.63 2.37c-.2.73-.75 1.66-1.13 2.22.85.26 1.75.4 2.68.4 5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="#fff"/></svg>`,
+};
+
+const PLATFORMS = [
+  {id:"instagram",label:"Instagram",color:"#E1306C"},
+  {id:"youtube",  label:"YouTube",  color:"#FF0000"},
+  {id:"facebook", label:"Facebook", color:"#1877F2"},
+  {id:"twitter",  label:"Twitter X",color:"#000000"},
+  {id:"linkedin", label:"LinkedIn", color:"#0A66C2"},
+  {id:"tiktok",   label:"TikTok",   color:"#EE1D52"},
+  {id:"pinterest",label:"Pinterest",color:"#E60023"},
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function Logo({pid, size=28}) {
+  return (
+    <span style={{display:"inline-flex",width:size,height:size,borderRadius:size*0.22,overflow:"hidden",flexShrink:0}}
+      dangerouslySetInnerHTML={{__html:LOGOS[pid]}}/>
+  );
+}
+
+function viralScore(text="") {
+  const h = (text.match(/#\w+/g)||[]).length;
+  const score = 5 + Math.min(2,h*0.3) + Math.min(1,text.length/500);
+  return Math.min(10, Math.round(score*10)/10);
+}
+function eng(score) {
+  if(score>=8) return {label:"High",color:"#22c55e"};
+  if(score>=6) return {label:"Medium",color:"#f59e0b"};
+  return {label:"Low",color:"#ef4444"};
+}
+
+function CopyBtn({text, small}) {
+  const [copied,setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).catch(()=>{});
+    setCopied(true); setTimeout(()=>setCopied(false),1800);
+  };
+  const sz = small?"4px 10px":"6px 14px";
+  return (
+    <button onClick={copy} style={{display:"flex",alignItems:"center",gap:4,padding:sz,background:copied?"#22c55e22":"#6c3bfb11",border:`1px solid ${copied?"#22c55e":"#6c3bfb44"}`,borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:600,color:copied?"#22c55e":"#6c3bfb",transition:"all .2s",whiteSpace:"nowrap"}}>
+      {copied
+        ? <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Copied</>
+        : <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy</>}
+    </button>
+  );
+}
+
+// ─── API Calls ────────────────────────────────────────────────────────────────
+
+// Shared prompt builder
+function buildPrompt(topic, platformList, language, imageContext) {
+  return `${imageContext ? "Image analysis: " + imageContext + "\n\n" : ""}Generate highly optimized social media content for: ${platformList}.
+Topic: "${topic}"
+Language: ${language}
+
+Return ONLY valid JSON (no markdown, no code fences, no extra text):
+{
+  "instagram":{"caption":"...","hashtags":"..."},
+  "youtube":{"title":"...","description":"...","tags":"..."},
+  "facebook":{"caption":"...","hashtags":"..."},
+  "twitter":{"tweet":"...","hashtags":"..."},
+  "linkedin":{"post":"...","hashtags":"..."},
+  "tiktok":{"caption":"...","hashtags":"..."},
+  "pinterest":{"title":"...","description":"...","keywords":"..."}
+}
+Rules:
+- Instagram: emoji-rich caption 150-200 chars + 25 hashtags (trending + niche mix)
+- YouTube: SEO title max 70 chars + 300-word description + 15 comma-separated tags
+- Facebook: shareable caption + 8 hashtags
+- Twitter: viral tweet max 280 chars + 4 hashtags
+- LinkedIn: professional storytelling 200-300 words + 5 hashtags
+- TikTok: catchy caption under 100 chars + 10 trending hashtags
+- Pinterest: SEO title + 150-char description + 10 comma-separated keywords
+- If Hindi: Devanagari script for content, English hashtags
+- Only include platforms: ${platformList}
+- Make content genuinely engaging and platform-specific`;
+}
+
+function parseAIResponse(raw) {
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("AI ne valid response nahi diya. Dobara try karo.");
+  return JSON.parse(match[0]);
+}
+
+// STEP 1: Vercel Function se image analyze karwao (Gemini — key safe hai server pe)
+async function analyzeImageWithGemini(imageBase64) {
+  const res = await fetch(`${API_BASE}/api/analyze-image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageBase64 })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error("Image analysis failed: " + data.error);
+  return data.description || "";
+}
+
+// STEP 2: Vercel Function se content generate karwao (Groq — key safe hai server pe)
+async function generateWithGroq(topic, platforms, language, imageContext) {
+  const res = await fetch(`${API_BASE}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ topic, platforms, language, imageContext })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error("Content generation failed: " + data.error);
+  return data;
+}
+
+// MAIN: Image → Gemini vision → Groq content / No image → Groq directly
+async function generateContent(topic, platforms, language, imageBase64) {
+  const platformList = platforms.join(", ");
+  let imageContext = "";
+
+  if (imageBase64) {
+    // Step 1: Gemini analyzes the image
+    imageContext = await analyzeImageWithGemini(imageBase64);
+  }
+
+  // Step 2: Groq generates content (with or without image context)
+  return await generateWithGroq(topic, platforms, language, imageContext);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SHOWCASE PREVIEWS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function PostImg({src, aspect="16/9", height, fallback="linear-gradient(135deg,#667eea,#764ba2)", children}) {
+  const style = {position:"relative",width:"100%",aspectRatio:height?undefined:aspect,height,background:src?"none":fallback,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"};
+  return (
+    <div style={style}>
+      {src ? <img src={src} alt="post" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/> : children}
+    </div>
+  );
+}
+
+function IGPreview({caption,hashtags,img}) {
+  const [liked,setLiked] = useState(false);
+  const [saved,setSaved] = useState(false);
+  return (
+    <div style={{background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid #dbdbdb",fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{display:"flex",alignItems:"center",padding:"8px 12px",gap:10}}>
+        <div style={{width:34,height:34,borderRadius:"50%",padding:2,background:"linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366)"}}>
+          <div style={{width:"100%",height:"100%",borderRadius:"50%",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,color:"#c13584"}}>S</div>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:700}}>sociogenix.ai</div>
+          <div style={{fontSize:10,color:"#8e8e8e"}}>Mumbai, Maharashtra</div>
+        </div>
+        <svg width="16" height="4" viewBox="0 0 16 4"><circle cx="2" cy="2" r="2" fill="#262626"/><circle cx="8" cy="2" r="2" fill="#262626"/><circle cx="14" cy="2" r="2" fill="#262626"/></svg>
+      </div>
+      <PostImg src={img} aspect="1" fallback="linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)">
+        <Logo pid="instagram" size={70}/>
+      </PostImg>
+      <div style={{padding:"10px 14px 8px"}}>
+        <div style={{display:"flex",alignItems:"center",marginBottom:6}}>
+          <button onClick={()=>setLiked(l=>!l)} style={{background:"none",border:"none",cursor:"pointer",padding:"0 14px 0 0"}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill={liked?"#ed4956":"none"} stroke={liked?"#ed4956":"#262626"} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="2" style={{marginRight:14}}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <button onClick={()=>setSaved(s=>!s)} style={{background:"none",border:"none",cursor:"pointer",marginLeft:"auto"}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill={saved?"#262626":"none"} stroke="#262626" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+          </button>
+        </div>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>{liked?"2,246":"2,245"} likes</div>
+        <div style={{fontSize:13,lineHeight:1.5,marginBottom:3}}><span style={{fontWeight:700}}>sociogenix.ai </span>{caption?.slice(0,110)}<span style={{color:"#8e8e8e"}}>… more</span></div>
+        <div style={{fontSize:13,color:"#00376b"}}>{hashtags?.split(" ").slice(0,5).join(" ")}</div>
+        <div style={{fontSize:11,color:"#c7c7c7",marginTop:4,textTransform:"uppercase",letterSpacing:0.3}}>2 HOURS AGO</div>
+      </div>
+    </div>
+  );
+}
+
+function YTPreview({title,tags,img}) {
+  return (
+    <div style={{background:"#fff",borderRadius:12,overflow:"hidden",fontFamily:"Roboto,sans-serif"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid #f2f2f2"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}><Logo pid="youtube" size={26}/><span style={{fontWeight:700,fontSize:16,letterSpacing:-.5}}>YouTube</span></div>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#030303" strokeWidth="2"/><path d="M21 21l-4-4" stroke="#030303" strokeWidth="2" strokeLinecap="round"/></svg>
+      </div>
+      <PostImg src={img} aspect="16/9" fallback="linear-gradient(135deg,#1a1a2e,#0f3460)">
+        <div style={{width:56,height:56,borderRadius:"50%",background:"#FF000055",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{width:0,height:0,borderTop:"12px solid transparent",borderBottom:"12px solid transparent",borderLeft:"20px solid #fff",marginLeft:5}}/>
+        </div>
+      </PostImg>
+      <div style={{display:"flex",gap:10,padding:"10px 12px"}}>
+        <div style={{width:36,height:36,borderRadius:"50%",background:"#FF0000",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:15}}>S</div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:14,fontWeight:600,color:"#030303",lineHeight:1.4}}>{title||"Your SEO-Optimized Video Title Here"}</div>
+          <div style={{fontSize:12,color:"#606060",marginTop:3}}>SocioGenix AI · 24K views · 2 days ago</div>
+          {tags && <div style={{fontSize:11,color:"#065fd4",marginTop:4}}>{tags.split(",").slice(0,4).map(t=>`#${t.trim()}`).join(" ")}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FBPreview({caption,hashtags,img}) {
+  const [liked,setLiked] = useState(false);
+  return (
+    <div style={{background:"#f0f2f5",borderRadius:12,overflow:"hidden",fontFamily:"Helvetica,Arial,sans-serif"}}>
+      <div style={{background:"#fff",padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <Logo pid="facebook" size={28}/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#050505" strokeWidth="2"/><path d="M21 21l-4-4" stroke="#050505" strokeWidth="2" strokeLinecap="round"/></svg>
+      </div>
+      <div style={{background:"#fff",margin:"8px 0"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px 8px"}}>
+          <div style={{width:42,height:42,borderRadius:"50%",background:"#1877F2",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:18}}>S</div>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:"#050505"}}>SocioGenix AI</div>
+            <div style={{fontSize:12,color:"#65676b"}}>2 hrs · 🌐</div>
+          </div>
+        </div>
+        <div style={{padding:"0 14px 10px",fontSize:14,color:"#050505",lineHeight:1.6}}>
+          {caption?.slice(0,150)} <span style={{color:"#1877F2"}}>{hashtags?.split(" ").slice(0,3).join(" ")}</span>
+        </div>
+        <PostImg src={img} aspect="16/9" fallback="linear-gradient(135deg,#1877F2,#0a3d91)">
+          <Logo pid="facebook" size={70}/>
+        </PostImg>
+        <div style={{padding:"8px 14px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8,paddingBottom:8,borderBottom:"1px solid #e4e6ea",fontSize:13,color:"#65676b"}}>
+            <span>👍❤️ {liked?"129":"128"}</span><span>12 comments · 8 shares</span>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-around"}}>
+            {[["Like",()=>setLiked(l=>!l),liked],["Comment",null,false],["Share",null,false]].map(([l,fn,a])=>(
+              <button key={l} onClick={fn||undefined} style={{background:"none",border:"none",cursor:fn?"pointer":"default",fontSize:13,fontWeight:600,color:a?"#1877F2":"#65676b",padding:"4px 10px"}}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TWPreview({tweet,hashtags,img}) {
+  const [liked,setLiked] = useState(false);
+  const [rt,setRt] = useState(false);
+  return (
+    <div style={{background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid #eff3f4",fontFamily:"'Helvetica Neue',sans-serif"}}>
+      <div style={{background:"#fff",padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #eff3f4"}}>
+        <Logo pid="twitter" size={26}/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#0f1419" strokeWidth="2"/><path d="M21 21l-4-4" stroke="#0f1419" strokeWidth="2" strokeLinecap="round"/></svg>
+      </div>
+      <div style={{display:"flex",gap:10,padding:"12px 14px"}}>
+        <div style={{width:42,height:42,borderRadius:"50%",background:"#000",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:18}}>S</div>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:3,flexWrap:"wrap"}}>
+            <span style={{fontWeight:800,fontSize:15,color:"#0f1419"}}>SocioGenix AI</span>
+            <span style={{fontSize:13,color:"#536471"}}>@sociogenix_ai · 2h</span>
+          </div>
+          <div style={{fontSize:15,color:"#0f1419",lineHeight:1.6,marginBottom:10}}>
+            {tweet}<span style={{color:"#1d9bf0"}}> {hashtags?.split(" ").slice(0,4).join(" ")}</span>
+          </div>
+          {img && <div style={{borderRadius:14,overflow:"hidden",marginBottom:10,border:"1px solid #cfd9de"}}><img src={img} alt="tweet" style={{width:"100%",height:160,objectFit:"cover",display:"block"}}/></div>}
+          <div style={{display:"flex",justifyContent:"space-between",maxWidth:300}}>
+            <button style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:4,fontSize:13,color:"#536471",padding:4}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="#536471" strokeWidth="2"/></svg>12
+            </button>
+            <button onClick={()=>setRt(r=>!r)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:4,fontSize:13,color:rt?"#00ba7c":"#536471",padding:4}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={rt?"#00ba7c":"none"}><polyline points="17 1 21 5 17 9" stroke={rt?"#00ba7c":"#536471"} strokeWidth="2"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3" stroke={rt?"#00ba7c":"#536471"} strokeWidth="2"/></svg>{rt?"46":"45"}
+            </button>
+            <button onClick={()=>setLiked(l=>!l)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:4,fontSize:13,color:liked?"#f91880":"#536471",padding:4}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={liked?"#f91880":"none"}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke={liked?"#f91880":"#536471"} strokeWidth="2"/></svg>{liked?"129":"128"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LIPreview({post,hashtags,img}) {
+  const [liked,setLiked] = useState(false);
+  const [expanded,setExpanded] = useState(false);
+  return (
+    <div style={{background:"#f3f2ee",borderRadius:12,overflow:"hidden",fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{background:"#fff",padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <Logo pid="linkedin" size={26}/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#0a0a0a" strokeWidth="2"/><path d="M21 21l-4-4" stroke="#0a0a0a" strokeWidth="2" strokeLinecap="round"/></svg>
+      </div>
+      <div style={{background:"#fff",margin:"8px 0"}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px 8px"}}>
+          <div style={{width:48,height:48,borderRadius:"50%",background:"linear-gradient(135deg,#0A66C2,#004182)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:20}}>S</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:14}}>Sociogenix AI</div>
+            <div style={{fontSize:12,color:"#666"}}>Marketing Strategist | AI Content Creator</div>
+            <div style={{fontSize:12,color:"#666"}}>2h · 🌐</div>
+          </div>
+          <button style={{background:"none",border:"1px solid #0A66C2",color:"#0A66C2",borderRadius:20,padding:"4px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Follow</button>
+        </div>
+        <div style={{padding:"0 14px 10px",fontSize:14,color:"#000",lineHeight:1.7}}>
+          {expanded?post:post?.slice(0,180)}
+          {post?.length>180 && <span onClick={()=>setExpanded(e=>!e)} style={{color:"#666",cursor:"pointer",fontWeight:600}}>{expanded?" …less":" …more"}</span>}
+          <div style={{color:"#0A66C2",marginTop:4,fontSize:13}}>{hashtags?.split(" ").slice(0,5).join(" ")}</div>
+        </div>
+        {img && <div style={{overflow:"hidden",aspectRatio:"16/9"}}><img src={img} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/></div>}
+        <div style={{padding:"8px 14px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8,paddingBottom:8,borderBottom:"1px solid #e0e0e0",fontSize:12,color:"#666"}}>
+            <span>👍❤️ {liked?"129":"128"}</span><span>24 comments</span>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-around"}}>
+            {[["Like",()=>setLiked(l=>!l)],["Comment",null],["Repost",null],["Send",null]].map(([l,fn])=>(
+              <button key={l} onClick={fn||undefined} style={{background:"none",border:"none",cursor:fn?"pointer":"default",fontSize:12,fontWeight:600,color:liked&&l==="Like"?"#0A66C2":"#666"}}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TTPreview({caption,hashtags,img}) {
+  const [liked,setLiked] = useState(false);
+  return (
+    <div style={{background:"#000",borderRadius:12,overflow:"hidden",color:"#fff",fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <span style={{fontSize:13,color:"#aaa"}}>Following</span>
+        <div style={{display:"flex",alignItems:"center",gap:6}}><Logo pid="tiktok" size={20}/><span style={{fontWeight:800,fontSize:15}}>For You</span></div>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#fff" strokeWidth="2"/><path d="M21 21l-4-4" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+      </div>
+      <div style={{position:"relative",aspectRatio:"9/16",maxHeight:300,background:img?"none":"linear-gradient(180deg,#1a0533,#2d1b69)",overflow:"hidden"}}>
+        {img && <img src={img} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>}
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,#000b 0%,transparent 55%)"}}/>
+        <div style={{position:"absolute",right:10,bottom:55,display:"flex",flexDirection:"column",gap:16,alignItems:"center"}}>
+          <div style={{width:44,height:44,borderRadius:"50%",border:"2px solid #fff",background:"#EE1D52",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18}}>S</div>
+          <button onClick={()=>setLiked(l=>!l)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,color:"#fff"}}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill={liked?"#EE1D52":"#fff"}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            <span style={{fontSize:11}}>{liked?"12.6K":"12.5K"}</span>
+          </button>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,color:"#fff"}}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span style={{fontSize:11}}>128</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,color:"#fff"}}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+            <span style={{fontSize:11}}>234</span>
+          </div>
+        </div>
+        <div style={{position:"absolute",bottom:12,left:12,right:64}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>@sociogenix.ai</div>
+          <div style={{fontSize:13,lineHeight:1.5,marginBottom:4}}>{caption?.slice(0,80)}</div>
+          <div style={{fontSize:13,color:"#69C9D0"}}>{hashtags?.split(" ").slice(0,5).join(" ")}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PINPreview({title,description,keywords,img}) {
+  const [saved,setSaved] = useState(false);
+  return (
+    <div style={{background:"#fff",borderRadius:12,overflow:"hidden",fontFamily:"-apple-system,sans-serif"}}>
+      <div style={{padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #efefef"}}>
+        <Logo pid="pinterest" size={26}/>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#111" strokeWidth="2"/><path d="M21 21l-4-4" stroke="#111" strokeWidth="2" strokeLinecap="round"/></svg>
+      </div>
+      <div style={{display:"flex",gap:10,padding:12}}>
+        <div style={{position:"relative",width:148,flexShrink:0}}>
+          <div style={{borderRadius:16,overflow:"hidden",aspectRatio:"2/3"}}>
+            <PostImg src={img} aspect="2/3" fallback="linear-gradient(135deg,#E60023,#ad081b)">
+              <Logo pid="pinterest" size={60}/>
+            </PostImg>
+          </div>
+          <button onClick={()=>setSaved(s=>!s)} style={{position:"absolute",top:10,right:8,background:saved?"#ad081b":"#E60023",color:"#fff",border:"none",borderRadius:20,padding:"6px 14px",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+            {saved ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" style={{display:"inline"}}><polyline points="20 6 9 17 4 12"/></svg> : null}
+            {saved?" Saved":"Save"}
+          </button>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:14,color:"#111",lineHeight:1.4,marginBottom:6}}>{title||"Your Pinterest Pin Title"}</div>
+          <div style={{fontSize:12,color:"#767676",lineHeight:1.6,marginBottom:10}}>{description?.slice(0,100)}</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:10}}>
+            {keywords?.split(",").slice(0,4).map((k,i)=>(
+              <span key={i} style={{background:"#efefef",color:"#333",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600}}>#{k.trim()}</span>
+            ))}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:"#E60023",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:700}}>S</div>
+            <span style={{fontSize:12,fontWeight:600}}>sociogenix.ai</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Content Card ─────────────────────────────────────────────────────────────
+function EditableText({value}) {
+  const [val,setVal] = useState(value);
+  return <textarea value={val} onChange={e=>setVal(e.target.value)} style={{width:"100%",border:"1px solid #e8e0ff",borderRadius:8,padding:"8px 10px",fontSize:13,lineHeight:1.6,color:"#222",background:"#faf8ff",outline:"none",minHeight:72,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>;
+}
+
+function ContentCard({platform, data, onRegen, dark}) {
+  const p = PLATFORMS.find(x=>x.id===platform);
+  if(!data) return null;
+  const mainText = data.caption||data.tweet||data.post||data.description||"";
+  const secondary = data.hashtags||data.tags||data.keywords||"";
+  const score = viralScore(mainText+" "+secondary);
+  const e = eng(score);
+  const allText = Object.values(data).join("\n");
+  const bg = dark?"#1e1e1e":"#fff";
+  const border = dark?"#333":"#e8e0ff";
+  const text = dark?"#f0f0f0":"#1a1a2e";
+  return (
+    <div className="fade-in" style={{background:bg,borderRadius:16,border:`1px solid ${border}`,marginBottom:14,overflow:"hidden"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:`1px solid ${border}`}}>
+        <Logo pid={platform} size={30}/>
+        <span style={{fontWeight:700,fontSize:15,color:p?.color}}>{p?.label}</span>
+        <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:11,background:e.color+"22",color:e.color,border:`1px solid ${e.color}55`,borderRadius:6,padding:"2px 8px",fontWeight:700}}>{e.label} {score}/10</span>
+          <CopyBtn text={allText} small/>
+          <button onClick={()=>onRegen(platform)} title="Regenerate" style={{background:"#6c3bfb11",border:"1px solid #6c3bfb44",borderRadius:8,cursor:"pointer",padding:"5px 10px",color:"#6c3bfb",display:"flex",alignItems:"center"}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          </button>
+        </div>
+      </div>
+      <div style={{padding:"12px 14px"}}>
+        {data.title && <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Title</div><EditableText value={data.title}/></div>}
+        {mainText && <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{data.tweet?"Tweet":data.post?"Post":"Caption"}</div><EditableText value={mainText}/></div>}
+        {secondary && <div><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{data.tags?"Tags":data.keywords?"Keywords":"Hashtags"}</div><div style={{fontSize:12,color:"#6c3bfb",lineHeight:1.9,wordBreak:"break-word"}}>{secondary}</div></div>}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HOME SCREEN
+// ══════════════════════════════════════════════════════════════════════════════
+function HomeScreen({dark}) {
+  const [topic,setTopic] = useState("");
+  const [language,setLanguage] = useState("English");
+  const [selected,setSelected] = useState(PLATFORMS.map(p=>p.id));
+  const [step,setStep] = useState("home");
+  const [generating,setGenerating] = useState(false);
+  const [results,setResults] = useState(null);
+  const [error,setError] = useState("");
+  const [activeTab,setActiveTab] = useState("content");
+  const [activePlatform,setActivePlatform] = useState("instagram");
+  const [uploadedImage,setUploadedImage] = useState(null);
+  const [imageBase64,setImageBase64] = useState(null);
+
+  const bg    = dark?"#0f0f0f":"#fafafa";
+  const card  = dark?"#1e1e1e":"#fff";
+  const border= dark?"#333":"#e8e0ff";
+  const text  = dark?"#f0f0f0":"#1a1a2e";
+  const sub   = dark?"#888":"#555";
+  const inp   = dark?"#2a2a2a":"#faf8ff";
+  const inpBorder= dark?"#444":"#e8e0ff";
+
+  const togglePlatform = id => setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+
+  const handleImagePick = (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      setUploadedImage(dataUrl);
+      setImageBase64(dataUrl.split(",")[1]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGenerate = async () => {
+    if(!topic.trim()){setError("Please enter a topic.");return;}
+    if(selected.length===0){setError("Select at least one platform.");return;}
+    setError("");setGenerating(true);
+    try {
+      const data = await generateContent(topic,selected,language,imageBase64);
+      setResults(data);setStep("results");setActivePlatform(selected[0]);
+      try {
+        const h={id:Date.now(),topic,platforms:selected,results:data,savedAt:new Date().toISOString()};
+        const prev=JSON.parse(localStorage.getItem("sg_history")||"[]");
+        localStorage.setItem("sg_history",JSON.stringify([h,...prev].slice(0,50)));
+      } catch{}
+    } catch(e){setError("Generation failed: "+e.message);}
+    setGenerating(false);
+  };
+
+  const handleRegenerate = async (platform) => {
+    setGenerating(true);
+    try{const data=await generateContent(topic,[platform],language,imageBase64);setResults(p=>({...p,...data}));}catch{}
+    setGenerating(false);
+  };
+
+  const copyAll = () => {
+    const text=selected.map(pid=>{const d=results?.[pid];return d?`--- ${pid.toUpperCase()} ---\n${Object.values(d).join("\n")}`:""}).join("\n\n");
+    navigator.clipboard.writeText(text).catch(()=>{});
+  };
+
+  const saveToSaved = () => {
+    try{
+      const item={id:Date.now(),topic,platforms:selected,results,savedAt:new Date().toISOString()};
+      const prev=JSON.parse(localStorage.getItem("sg_saved")||"[]");
+      localStorage.setItem("sg_saved",JSON.stringify([item,...prev].slice(0,100)));
+      alert("Saved successfully!");
+    }catch{}
+  };
+
+  const showcaseMap = results ? {
+    instagram:<IGPreview {...(results.instagram||{})} img={uploadedImage}/>,
+    youtube:  <YTPreview   {...(results.youtube||{})}   img={uploadedImage}/>,
+    facebook: <FBPreview  {...(results.facebook||{})}  img={uploadedImage}/>,
+    twitter:  <TWPreview  {...(results.twitter||{})}   img={uploadedImage}/>,
+    linkedin: <LIPreview  {...(results.linkedin||{})}  img={uploadedImage}/>,
+    tiktok:   <TTPreview  {...(results.tiktok||{})}    img={uploadedImage}/>,
+    pinterest:<PINPreview {...(results.pinterest||{})} img={uploadedImage}/>,
+  } : {};
+
+  const cardStyle = {background:card,borderRadius:16,padding:"14px 16px",marginBottom:12,border:`1px solid ${border}`};
+  const labelStyle = {fontWeight:700,fontSize:13,color:sub,marginBottom:8,display:"block"};
+  const inputStyle = {width:"100%",border:`1.5px solid ${inpBorder}`,borderRadius:12,padding:"10px 12px",fontSize:14,outline:"none",background:inp,fontFamily:"inherit",boxSizing:"border-box",color:text};
+
+  // ── PLATFORM SELECT ──
+  if(step==="platforms") return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:bg}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px 12px",borderBottom:`1px solid ${border}`}}>
+        <button onClick={()=>setStep("home")} style={{width:36,height:36,borderRadius:12,border:`1px solid ${border}`,background:card,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#6c3bfb",flexShrink:0}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div><div style={{fontWeight:800,fontSize:18,color:text}}>Choose Platforms</div><div style={{fontSize:12,color:sub}}>Select platforms to generate content for</div></div>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"12px 16px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          {PLATFORMS.map(p=>(
+            <button key={p.id} onClick={()=>togglePlatform(p.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:16,borderRadius:16,border:`2px solid ${selected.includes(p.id)?p.color:border}`,background:selected.includes(p.id)?p.color+"15":card,cursor:"pointer",position:"relative",transition:"all .2s"}}>
+              <Logo pid={p.id} size={44}/>
+              <span style={{fontSize:12,fontWeight:700,color:text}}>{p.label}</span>
+              {selected.includes(p.id) && <div style={{position:"absolute",top:8,right:8,width:20,height:20,borderRadius:"50%",background:p.color,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>}
+            </button>
+          ))}
+        </div>
+        <button onClick={()=>setSelected(PLATFORMS.map(p=>p.id))} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:"#6c3bfb",fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Select All</button>
+      </div>
+      <div style={{padding:"12px 16px",borderTop:`1px solid ${border}`}}>
+        <button onClick={handleGenerate} disabled={generating||selected.length===0} style={{width:"100%",background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"15px 24px",fontSize:15,fontWeight:800,cursor:"pointer",opacity:selected.length===0?.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          {generating
+            ? <><svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".4"/><path d="M21 12a9 9 0 00-9-9" strokeLinecap="round"/></svg>Generating…</>
+            : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" fill="#fff"/></svg>Generate for {selected.length} Platform{selected.length>1?"s":""}</>}
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── RESULTS ──
+  if(step==="results" && results) return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:bg}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px 12px",borderBottom:`1px solid ${border}`}}>
+        <button onClick={()=>setStep("home")} style={{width:36,height:36,borderRadius:12,border:`1px solid ${border}`,background:card,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#6c3bfb",flexShrink:0}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style={{fontWeight:800,fontSize:18,color:text}}>Results</div>
+        {generating && <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,fontSize:12,color:"#6c3bfb"}}>
+          <svg className="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".4"/><path d="M21 12a9 9 0 00-9-9" strokeLinecap="round"/></svg>Regenerating…
+        </div>}
+      </div>
+      {/* Tabs */}
+      <div style={{display:"flex",margin:"10px 16px 10px",background:dark?"#1a1a1a":"#f5f0ff",borderRadius:12,padding:4}}>
+        {[["content","Content",<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4z" strokeLinecap="round"/></svg>],
+          ["showcase","Showcase",<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>]].map(([t,label,icon])=>(
+          <button key={t} onClick={()=>setActiveTab(t)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"none",cursor:"pointer",background:activeTab===t?"#6c3bfb":"transparent",color:activeTab===t?"#fff":sub,fontWeight:700,fontSize:13,transition:"all .2s",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            {icon}{label}
+          </button>
+        ))}
+      </div>
+      {/* Platform pills */}
+      <div style={{display:"flex",gap:10,overflowX:"auto",padding:"0 16px 10px",scrollbarWidth:"none"}}>
+        {selected.map(pid=>{
+          const pdef=PLATFORMS.find(p=>p.id===pid);
+          return (
+            <button key={pid} onClick={()=>setActivePlatform(pid)} style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:3,border:"none",background:"none",cursor:"pointer"}}>
+              <div style={{padding:3,borderRadius:12,border:`2.5px solid ${activePlatform===pid?pdef?.color:"transparent"}`,transition:"border .2s"}}>
+                <Logo pid={pid} size={32}/>
+              </div>
+              <span style={{fontSize:9,fontWeight:700,color:activePlatform===pid?pdef?.color:sub}}>{pdef?.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      {/* Content */}
+      <div style={{flex:1,overflowY:"auto",padding:"0 16px"}}>
+        {activeTab==="content"
+          ? <ContentCard platform={activePlatform} data={results[activePlatform]} onRegen={handleRegenerate} dark={dark}/>
+          : <div>
+              {showcaseMap[activePlatform]}
+              {selected.filter(p=>p!==activePlatform).length>0 && (
+                <div style={{marginTop:16}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#bbb",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Other Platforms — tap to switch</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    {selected.filter(p=>p!==activePlatform).map(pid=>{
+                      const pdef=PLATFORMS.find(p2=>p2.id===pid);
+                      return (
+                        <div key={pid} onClick={()=>setActivePlatform(pid)} style={{cursor:"pointer",borderRadius:12,overflow:"hidden",border:`2px solid ${pdef?.color}44`}}>
+                          <div style={{transform:"scale(0.62)",transformOrigin:"top left",width:"161%",pointerEvents:"none"}}>{showcaseMap[pid]}</div>
+                          <div style={{background:card,padding:"5px 8px",display:"flex",alignItems:"center",gap:5,borderTop:`1px solid ${pdef?.color}33`}}>
+                            <Logo pid={pid} size={14}/><span style={{fontSize:11,fontWeight:700,color:pdef?.color}}>{pdef?.label}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>}
+      </div>
+      {/* Footer */}
+      <div style={{display:"flex",gap:8,padding:"10px 16px",borderTop:`1px solid ${border}`}}>
+        <button onClick={copyAll} style={{flex:1,background:card,color:"#6c3bfb",border:`1.5px solid #6c3bfb44`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy All
+        </button>
+        <button onClick={saveToSaved} style={{flex:1,background:card,color:"#E60023",border:`1.5px solid #E6002344`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>Save
+        </button>
+        <button onClick={()=>setStep("platforms")} style={{flex:1,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>Redo
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── HOME ──
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:bg}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"18px 18px 6px"}}>
+        <button style={{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",flexDirection:"column",gap:5}}>
+          <div style={{width:22,height:2,borderRadius:2,background:text}}/><div style={{width:16,height:2,borderRadius:2,background:text}}/><div style={{width:22,height:2,borderRadius:2,background:text}}/>
+        </button>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:22,fontWeight:900,letterSpacing:-.5}}><span style={{color:"#6c3bfb"}}>Socio</span><span style={{color:text}}>Genix</span><span style={{color:"#6c3bfb"}}> AI</span></div>
+          <div style={{fontSize:11,color:sub}}>AI-Powered Social Media Generator</div>
+        </div>
+        <div style={{width:36,height:36,borderRadius:10,background:"linear-gradient(135deg,#f59e0b,#d97706)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M2 17l2-8 5 4 3-7 3 7 5-4 2 8H2z" fill="#fff"/><rect x="2" y="18" width="20" height="2" rx="1" fill="#fff"/></svg>
+        </div>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"10px 16px"}}>
+        {/* Topic */}
+        <div style={cardStyle}>
+          <label style={labelStyle}>Enter your topic *</label>
+          <input value={topic} onChange={e=>setTopic(e.target.value.slice(0,200))} placeholder="e.g. 5 Tips to Grow Your Business Online" style={inputStyle}/>
+          <div style={{textAlign:"right",fontSize:11,color:"#bbb",marginTop:4}}>{topic.length}/200</div>
+        </div>
+        {/* Image Upload */}
+        <div style={cardStyle}>
+          <label style={labelStyle}>Upload Image <span style={{fontWeight:400,color:"#aaa"}}>(Optional — AI will analyze it)</span></label>
+          {uploadedImage ? (
+            <div style={{position:"relative",borderRadius:12,overflow:"hidden",border:`1.5px solid ${border}`}}>
+              <img src={uploadedImage} alt="preview" style={{width:"100%",height:140,objectFit:"cover",display:"block"}}/>
+              <button onClick={()=>{setUploadedImage(null);setImageBase64(null);}} style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:"50%",background:"#000a",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+              <div style={{position:"absolute",bottom:8,left:10,background:"#6c3bfbcc",color:"#fff",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20,display:"flex",alignItems:"center",gap:4}}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z"/></svg>AI will use image context
+              </div>
+            </div>
+          ) : (
+            <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,width:"100%",border:`2px dashed ${dark?"#444":"#c4b5fd"}`,borderRadius:12,padding:"20px 16px",background:inp,cursor:"pointer",boxSizing:"border-box"}}>
+              <input type="file" accept="image/*" style={{display:"none"}} onChange={handleImagePick}/>
+              <div style={{width:44,height:44,borderRadius:"50%",background:"#6c3bfb22",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#6c3bfb" strokeWidth="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="#6c3bfb"/><path d="M21 15l-5-5L5 21" stroke="#6c3bfb" strokeWidth="2" strokeLinecap="round"/></svg>
+              </div>
+              <span style={{fontWeight:700,fontSize:13,color:"#6c3bfb"}}>Click to upload image</span>
+              <span style={{fontSize:11,color:"#aaa"}}>JPG, PNG, WEBP supported</span>
+            </label>
+          )}
+        </div>
+        {/* Language */}
+        <div style={cardStyle}>
+          <label style={labelStyle}>Language</label>
+          <select value={language} onChange={e=>setLanguage(e.target.value)} style={{...inputStyle,cursor:"pointer"}}>
+            <option>English</option><option>Hindi</option>
+          </select>
+        </div>
+        {/* Platforms */}
+        <div style={cardStyle}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <label style={{...labelStyle,marginBottom:0}}>Platforms</label>
+            <button onClick={()=>setSelected(PLATFORMS.map(p=>p.id))} style={{fontSize:11,color:"#6c3bfb",background:"none",border:"none",cursor:"pointer",fontWeight:700}}>Select All</button>
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {PLATFORMS.map(p=>(
+              <button key={p.id} onClick={()=>togglePlatform(p.id)} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",borderRadius:20,border:`1.5px solid ${selected.includes(p.id)?p.color:border}`,background:selected.includes(p.id)?p.color+"15":card,cursor:"pointer"}}>
+                <Logo pid={p.id} size={18}/>
+                <span style={{fontSize:12,fontWeight:700,color:selected.includes(p.id)?p.color:sub}}>{p.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        {error && <div style={{color:"#ef4444",fontSize:13,padding:"8px 12px",background:"#fef2f2",borderRadius:10,marginBottom:12,border:"1px solid #fca5a5"}}>{error}</div>}
+        <button onClick={handleGenerate} disabled={generating} style={{width:"100%",background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"15px 24px",fontSize:15,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          {generating
+            ? <><svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".4"/><path d="M21 12a9 9 0 00-9-9" strokeLinecap="round"/></svg>{imageBase64?"Gemini analyzing → Groq writing…":"Groq generating content…"}</>
+            : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" fill="#fff"/></svg>Generate Content</>}
+        </button>
+        <div style={{textAlign:"center",fontSize:11,color:"#bbb",marginTop:8,marginBottom:16,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#bbb"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z"/></svg>
+          AI creates content & real previews for all platforms
+        </div>
+        {/* Why card */}
+        <div style={{background:"linear-gradient(135deg,#4a0fa3,#6c3bfb,#8b5cf6)",borderRadius:20,padding:18,marginBottom:20,color:"#fff"}}>
+          <div style={{fontWeight:800,fontSize:15,marginBottom:14}}>Why SocioGenix AI?</div>
+          {[["ai","AI-Powered","Unique content for every platform in seconds."],
+            ["img","Image Analysis","Upload image — AI reads it for better content."],
+            ["eye","Real Previews","See exactly how posts look on each app."],
+            ["save","Save & History","Bookmark and revisit your generations."],
+            ["lang","Hindi + English","Full multi-language support."]
+          ].map(([icon,title,desc])=>(
+            <div key={title} style={{display:"flex",gap:10,marginBottom:10}}>
+              <div style={{width:34,height:34,borderRadius:10,background:"#ffffff22",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {icon==="ai"   && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8"><rect x="3" y="8" width="18" height="10" rx="2"/><path d="M8 8V6a4 4 0 018 0v2"/><circle cx="9" cy="13" r="1" fill="#fff"/><circle cx="15" cy="13" r="1" fill="#fff"/></svg>}
+                {icon==="img"  && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="#fff"/><path d="M21 15l-5-5L5 21" strokeLinecap="round"/></svg>}
+                {icon==="eye"  && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+                {icon==="save" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>}
+                {icon==="lang" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20" strokeLinecap="round"/></svg>}
+              </div>
+              <div><div style={{fontWeight:700,fontSize:13}}>{title}</div><div style={{fontSize:11,opacity:.75}}>{desc}</div></div>
+            </div>
+          ))}
+          <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"center"}}>
+            {PLATFORMS.map(p=><Logo key={p.id} pid={p.id} size={30}/>)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── History ────────────────────────────────────────────────────────────────────
+function HistoryScreen({dark}) {
+  const [history,setHistory] = useState(()=>{try{return JSON.parse(localStorage.getItem("sg_history")||"[]");}catch{return [];}});
+  const [expanded,setExpanded] = useState(null);
+  const bg=dark?"#0f0f0f":"#fafafa",card=dark?"#1e1e1e":"#fff",border=dark?"#333":"#e8e0ff",text=dark?"#f0f0f0":"#1a1a2e",sub=dark?"#888":"#555";
+  const clear=()=>{if(window.confirm("Delete all history?")){localStorage.removeItem("sg_history");setHistory([]);}};
+  if(!history.length) return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",alignItems:"center",justifyContent:"center",background:bg}}>
+      <div style={{width:72,height:72,borderRadius:20,background:dark?"#2a2a2a":"#f0ebff",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+      </div>
+      <div style={{fontWeight:700,fontSize:18,color:text}}>No History Yet</div>
+      <div style={{fontSize:14,color:sub,marginTop:6}}>Generated content will appear here</div>
+    </div>
+  );
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:bg}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 16px 12px",borderBottom:`1px solid ${border}`}}>
+        <div style={{fontWeight:800,fontSize:20,color:text}}>History</div>
+        <button onClick={clear} style={{fontSize:12,color:"#ef4444",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:8,padding:"4px 10px",cursor:"pointer",fontWeight:600}}>Clear All</button>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"12px 16px"}}>
+        {history.map((item,i)=>(
+          <div key={item.id||i} style={{background:card,borderRadius:14,border:`1px solid ${border}`,marginBottom:12,overflow:"hidden"}}>
+            <div onClick={()=>setExpanded(expanded===i?null:i)} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",cursor:"pointer"}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14,color:text,display:"flex",alignItems:"center",gap:6}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4z" strokeLinecap="round"/></svg>
+                  {item.topic}
+                </div>
+                <div style={{display:"flex",gap:5,marginTop:6}}>{item.platforms?.slice(0,6).map(pid=><Logo key={pid} pid={pid} size={18}/>)}</div>
+                <div style={{fontSize:11,color:sub,marginTop:4}}>{new Date(item.savedAt).toLocaleString()}</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="2.5"><polyline points={expanded===i?"18 15 12 9 6 15":"6 9 12 15 18 9"}/></svg>
+            </div>
+            {expanded===i && (
+              <div style={{borderTop:`1px solid ${border}`,padding:"10px 14px"}}>
+                {item.platforms?.map(pid=>{
+                  const d=item.results?.[pid];if(!d) return null;
+                  const pdef=PLATFORMS.find(p=>p.id===pid);
+                  return (
+                    <div key={pid} style={{marginBottom:8,padding:"8px 10px",background:dark?"#2a2a2a":"#faf8ff",borderRadius:10,border:`1px solid ${border}`}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}><Logo pid={pid} size={18}/><span style={{fontWeight:700,fontSize:12,color:pdef?.color}}>{pid.toUpperCase()}</span></div>
+                        <CopyBtn text={Object.values(d).join("\n")} small/>
+                      </div>
+                      <div style={{fontSize:12,color:sub,lineHeight:1.5}}>{Object.values(d).join(" ").slice(0,100)}…</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Saved ─────────────────────────────────────────────────────────────────────
+function SavedScreen({dark}) {
+  const [saved,setSaved] = useState(()=>{try{return JSON.parse(localStorage.getItem("sg_saved")||"[]");}catch{return [];}});
+  const bg=dark?"#0f0f0f":"#fafafa",card=dark?"#1e1e1e":"#fff",border=dark?"#333":"#e8e0ff",text=dark?"#f0f0f0":"#1a1a2e",sub=dark?"#888":"#555";
+  const remove=id=>{const u=saved.filter(x=>x.id!==id);setSaved(u);localStorage.setItem("sg_saved",JSON.stringify(u));};
+  if(!saved.length) return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",alignItems:"center",justifyContent:"center",background:bg}}>
+      <div style={{width:72,height:72,borderRadius:20,background:dark?"#2a2a2a":"#f0ebff",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="1.5"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+      </div>
+      <div style={{fontWeight:700,fontSize:18,color:text}}>Nothing Saved</div>
+      <div style={{fontSize:14,color:sub,marginTop:6}}>Tap Save on Results to bookmark content</div>
+    </div>
+  );
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:bg}}>
+      <div style={{padding:"20px 16px 12px",borderBottom:`1px solid ${border}`,fontWeight:800,fontSize:20,color:text}}>Saved</div>
+      <div style={{flex:1,overflowY:"auto",padding:"12px 16px"}}>
+        {saved.map(item=>(
+          <div key={item.id} style={{background:card,borderRadius:14,border:`1px solid ${border}`,marginBottom:12,padding:"12px 14px"}}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14,color:text,marginBottom:6,display:"flex",alignItems:"center",gap:6}}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E60023" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {item.topic}
+                </div>
+                <div style={{display:"flex",gap:5,marginBottom:6}}>{item.platforms?.map(pid=><Logo key={pid} pid={pid} size={22}/>)}</div>
+                <div style={{fontSize:11,color:sub}}>{new Date(item.savedAt).toLocaleString()}</div>
+              </div>
+              <button onClick={()=>remove(item.id)} style={{background:"none",border:"none",cursor:"pointer",padding:4}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${dark?"#333":"#f5f0ff"}`}}>
+              <CopyBtn text={item.platforms?.map(pid=>`--- ${pid.toUpperCase()} ---\n${Object.values(item.results?.[pid]||{}).join("\n")}`).join("\n\n")}/>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function SettingsScreen({dark, setDark}) {
+  const [notifs,setNotifs] = useState(true);
+  const bg=dark?"#0f0f0f":"#fafafa",card=dark?"#1e1e1e":"#fff",border=dark?"#333":"#e8e0ff",text=dark?"#f0f0f0":"#1a1a2e",sub=dark?"#888":"#555",iconBg=dark?"#2a2a2a":"#f0ebff";
+  const Toggle=({on,onToggle})=>(
+    <div onClick={onToggle} style={{width:46,height:26,borderRadius:13,background:on?"#6c3bfb":"#ccc",cursor:"pointer",position:"relative",transition:"background .25s",flexShrink:0}}>
+      <div style={{width:22,height:22,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:on?22:2,transition:"left .25s",boxShadow:"0 1px 4px #0003"}}/>
+    </div>
+  );
+  const rows=[
+    {icon:"moon", label:"Dark Mode",     ctrl:<Toggle on={dark}   onToggle={()=>setDark(d=>!d)}/>},
+    {icon:"bell", label:"Notifications", ctrl:<Toggle on={notifs} onToggle={()=>setNotifs(n=>!n)}/>},
+    {icon:"globe",label:"Language",      ctrl:<span style={{fontSize:13,color:sub}}>English / Hindi</span>},
+    {icon:"info", label:"About SocioGenix AI", ctrl:<span style={{fontSize:13,color:sub}}>v2.0</span>},
+  ];
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",background:bg}}>
+      <div style={{padding:"20px 16px 12px",borderBottom:`1px solid ${border}`,fontWeight:800,fontSize:20,color:text}}>Settings</div>
+      <div style={{padding:16,flex:1,overflowY:"auto"}}>
+        <div style={{background:card,borderRadius:16,padding:"14px 16px",marginBottom:14,border:`1px solid ${border}`}}>
+          <div style={{fontWeight:700,fontSize:13,color:sub,marginBottom:10}}>Supported Platforms</div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {PLATFORMS.map(p=>(
+              <div key={p.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <Logo pid={p.id} size={38}/><span style={{fontSize:9,color:p.color,fontWeight:700}}>{p.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {rows.map(({icon,label,ctrl})=>(
+          <div key={label} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",background:card,borderRadius:14,marginBottom:10,border:`1px solid ${border}`}}>
+            <div style={{width:36,height:36,borderRadius:10,background:iconBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              {icon==="moon"  && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>}
+              {icon==="bell"  && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>}
+              {icon==="globe" && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20" strokeLinecap="round"/></svg>}
+              {icon==="info"  && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>}
+            </div>
+            <span style={{fontWeight:600,fontSize:14,color:text,flex:1}}>{label}</span>
+            {ctrl}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+function App() {
+  const [tab, setTab] = useState("home");
+  const [dark, setDark] = useState(false);
+
+  const NAV = [
+    {id:"home",    label:"Home",
+     icon:<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="none" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeWidth="2" strokeLinecap="round"/><polyline points="9 22 9 12 15 12 15 22" strokeWidth="2" strokeLinecap="round"/></svg>},
+    {id:"history", label:"History",
+     icon:<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="none" strokeLinejoin="round"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2" strokeLinecap="round"/></svg>},
+    {id:"saved",   label:"Saved",
+     icon:<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="none" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" strokeWidth="2" strokeLinecap="round"/></svg>},
+    {id:"settings",label:"Settings",
+     icon:<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="none" strokeLinejoin="round"><circle cx="12" cy="12" r="3" strokeWidth="2"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" strokeWidth="2"/></svg>},
+  ];
+
+  const screens = {
+    home:     <HomeScreen dark={dark}/>,
+    history:  <HistoryScreen dark={dark}/>,
+    saved:    <SavedScreen dark={dark}/>,
+    settings: <SettingsScreen dark={dark} setDark={setDark}/>,
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:dark?"#0f0f0f":"#fafafa",display:"flex",flexDirection:"column",overflow:"hidden",transition:"background .3s"}}>
+      <div style={{flex:1,overflow:"hidden",minHeight:0}}>{screens[tab]}</div>
+      <div style={{background:dark?"#1a1a1a":"#fff",borderTop:`1px solid ${dark?"#333":"#f0ebff"}`,flexShrink:0,paddingBottom:"max(12px,env(safe-area-inset-bottom))"}}>
+        <div style={{display:"flex",padding:"8px 0 2px"}}>
+          {NAV.map(n=>(
+            <button key={n.id} onClick={()=>setTab(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,border:"none",background:"none",cursor:"pointer",padding:"4px 0",color:tab===n.id?"#6c3bfb":dark?"#555":"#bbb",transition:"color .2s"}}>
+              {n.icon}
+              <span style={{fontSize:10,fontWeight:tab===n.id?800:500,textTransform:"capitalize"}}>{n.label}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{textAlign:"center",paddingTop:2}}>
+          <a href="https://www.instagram.com/sari.m696?igsh=cWRiY2IwanVkdjdv" target="_blank" rel="noopener noreferrer"
+            style={{fontSize:10,color:dark?"#555":"#bbb",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>
+            <svg width="11" height="11" viewBox="0 0 24 24"><defs><radialGradient id="igfoot" cx="30%" cy="107%" r="150%"><stop offset="0%" stopColor="#fdf497"/><stop offset="45%" stopColor="#fd5949"/><stop offset="60%" stopColor="#d6249f"/><stop offset="90%" stopColor="#285AEB"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#igfoot)"/><path d="M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z" fill="#fff"/><rect x="4" y="4" width="16" height="16" rx="5" stroke="#fff" strokeWidth="1.5" fill="none"/></svg>
+            Made by <span style={{fontWeight:700,background:"linear-gradient(90deg,#d6249f,#285AEB)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Sarim</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
