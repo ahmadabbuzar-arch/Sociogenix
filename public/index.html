@@ -525,86 +525,40 @@ function AdModal({ onClose, onReward, dark }) {
 
   // Trigger Adwixo interstitial fresh on every open
   React.useEffect(() => {
-    // Best approach: inject ad inside an iframe so it is completely isolated
-    // Each open = new iframe = fresh ad request, no caching issues
-    const container = document.getElementById("adwixo-iframe-container");
-    if (!container) return;
+    // Remove any old ad script to force reload
+    const oldScript = document.getElementById("adwixo-reload");
+    if (oldScript) oldScript.remove();
 
-    // Clear previous
-    container.innerHTML = "";
+    // Dynamically inject fresh Adwixo script so ad fires every time
+    const script = document.createElement("script");
+    script.id  = "adwixo-reload";
+    script.src = "https://adwixo.com/teg/js/interwixo.js?t=" + Date.now(); // cache bust
+    script.async = true;
+    script.setAttribute("zone", "98686");
+    document.body.appendChild(script);
 
-    // Create fresh iframe
-    const iframe = document.createElement("iframe");
-    iframe.style.width = "100%";
-    iframe.style.minHeight = "200px";
-    iframe.style.border = "none";
-    iframe.style.borderRadius = "12px";
-    iframe.setAttribute("scrolling", "no");
-    container.appendChild(iframe);
-
-    // Write ad code inside iframe
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-    iframeDoc.open();
-    iframeDoc.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8"/>
-        <style>
-          body { margin:0; padding:0; display:flex; align-items:center; justify-content:center; min-height:200px; background:transparent; }
-        </style>
-      </head>
-      <body>
-        <script async zone="98686" src="https://adwixo.com/teg/js/interwixo.js?cb=${Date.now()}"><\/script>
-      </body>
-      </html>
-    `);
-    iframeDoc.close();
+    // Also try calling show function if already loaded
+    try {
+      if (window.adwixo && typeof window.adwixo.show === "function") {
+        window.adwixo.show();
+      }
+      if (window.interwixo && typeof window.interwixo.show === "function") {
+        window.interwixo.show();
+      }
+    } catch(e) {}
 
     return () => {
-      if (container) container.innerHTML = "";
+      // cleanup on close
+      const s = document.getElementById("adwixo-reload");
+      if (s) s.remove();
     };
   }, []);
 
-  // Tab switch detection — ad click pe blur ignore karo
+  // Tab switch detection
   React.useEffect(() => {
-    let blurTimeout = null;
-
-    const onBlur = () => {
-      // 1 second wait karo — agar user ad click karke wapas aaya
-      // to focus event fire hoga aur blur cancel ho jaayega
-      blurTimeout = setTimeout(() => {
-        if (phase === "watching") setPhase("cancelled");
-      }, 1000);
-    };
-
-    const onFocus = () => {
-      // User wapas aaya — blur cancel karo (ad click tha, tab switch nahi)
-      if (blurTimeout) {
-        clearTimeout(blurTimeout);
-        blurTimeout = null;
-      }
-    };
-
-    const onVisibility = () => {
-      // Actual tab switch — page hidden hua
-      if (document.visibilityState === "hidden") {
-        // Turant cancel — yeh real tab switch hai
-        if (blurTimeout) clearTimeout(blurTimeout);
-        if (phase === "watching") setPhase("cancelled");
-      }
-    };
-
+    const onBlur = () => { if(phase==="watching") setPhase("cancelled"); };
     window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      if (blurTimeout) clearTimeout(blurTimeout);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    return () => window.removeEventListener("blur", onBlur);
   }, [phase]);
 
   // Countdown timer
@@ -637,10 +591,12 @@ function AdModal({ onClose, onReward, dark }) {
               <div style={{fontSize:13,color:sub}}>Watch for {AD_WATCH_TIME}s to earn {AD_REWARD} credits</div>
             </div>
 
-            {/* Adwixo ad container — iframe isolated, fresh every time */}
-            <div style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:16,minHeight:180,marginBottom:16,overflow:"hidden",border:`1px solid ${dark?"#444":"#e8e0ff"}`,position:"relative"}}>
-              <div id="adwixo-iframe-container" style={{width:"100%",minHeight:180}}/>
-              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",opacity:0.4,zIndex:-1}}>
+            {/* Adwixo ad container — unique key forces DOM remount */}
+            <div key={adKey.current} style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:16,minHeight:180,marginBottom:16,overflow:"hidden",border:`1px solid ${dark?"#444":"#e8e0ff"}`,position:"relative"}}>
+              {/* Adwixo renders here automatically via the script */}
+              <div id={"adwixo-container-"+adKey.current} style={{width:"100%",minHeight:180}}/>
+              {/* Fallback label while ad loads */}
+              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",opacity:0.5}}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
                 <div style={{fontSize:11,color:sub,marginTop:6}}>Ad loading…</div>
               </div>
