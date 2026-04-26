@@ -554,11 +554,45 @@ function AdModal({ onClose, onReward, dark }) {
     };
   }, []);
 
-  // Tab switch detection
+  // Tab switch detection — ad click pe blur ignore karo
   React.useEffect(() => {
-    const onBlur = () => { if(phase==="watching") setPhase("cancelled"); };
+    let blurTimeout = null;
+
+    const onBlur = () => {
+      // 1 second wait karo — agar user ad click karke wapas aaya
+      // to focus event fire hoga aur blur cancel ho jaayega
+      blurTimeout = setTimeout(() => {
+        if (phase === "watching") setPhase("cancelled");
+      }, 1000);
+    };
+
+    const onFocus = () => {
+      // User wapas aaya — blur cancel karo (ad click tha, tab switch nahi)
+      if (blurTimeout) {
+        clearTimeout(blurTimeout);
+        blurTimeout = null;
+      }
+    };
+
+    const onVisibility = () => {
+      // Actual tab switch — page hidden hua
+      if (document.visibilityState === "hidden") {
+        // Turant cancel — yeh real tab switch hai
+        if (blurTimeout) clearTimeout(blurTimeout);
+        if (phase === "watching") setPhase("cancelled");
+      }
+    };
+
     window.addEventListener("blur", onBlur);
-    return () => window.removeEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      if (blurTimeout) clearTimeout(blurTimeout);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [phase]);
 
   // Countdown timer
