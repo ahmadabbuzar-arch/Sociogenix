@@ -963,12 +963,12 @@ function AnimBtn({onClick, children, style, title, type="primary", disabled}) {
   const btnRef = useRef(null);
 
   const configs = {
-    primary:   { scale: [1, 0.88, 1.06, 0.97, 1], color: "#6c3bfb", particles: ["#6c3bfb","#a78bfa","#fff","#8b5cf6"] },
-    secondary: { scale: [1, 0.90, 1.04, 1],        color: "#6c3bfb", particles: ["#6c3bfb","#38bdf8","#22c55e"] },
-    icon:      { scale: [1, 0.80, 1.08, 1],         color: "#6c3bfb", particles: ["#6c3bfb","#f59e0b"] },
-    copy:      { scale: [1, 0.92, 1.05, 1],         color: "#22c55e", particles: ["#22c55e","#34d399","#fff"] },
-    save:      { scale: [1, 0.88, 1.06, 0.97, 1],  color: "#E60023", particles: ["#E60023","#f87171","#ffd700"] },
-    danger:    { scale: [1, 0.82, 1.07, 1],         color: "#ef4444", particles: ["#ef4444","#f87171"] },
+    primary:   { color: "#6c3bfb", particles: ["#6c3bfb","#a78bfa","#c4b5fd","#8b5cf6","#7c3aed"] },
+    secondary: { color: "#6c3bfb", particles: ["#6c3bfb","#38bdf8","#22c55e","#818cf8"] },
+    icon:      { color: "#6c3bfb", particles: ["#6c3bfb","#f59e0b","#fbbf24"] },
+    copy:      { color: "#22c55e", particles: ["#22c55e","#34d399","#6ee7b7","#a7f3d0"] },
+    save:      { color: "#E60023", particles: ["#E60023","#f87171","#fbbf24","#fb923c"] },
+    danger:    { color: "#ef4444", particles: ["#ef4444","#f87171","#fca5a5"] },
   };
 
   const handleClick = (e) => {
@@ -978,45 +978,74 @@ function AnimBtn({onClick, children, style, title, type="primary", disabled}) {
 
     const cfg = configs[type] || configs.primary;
     const rect = btn.getBoundingClientRect();
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
+    const cx = e.clientX;
+    const cy = e.clientY;
 
-    // 1. Scale keyframe animation via Web Animations API — always works
-    const scales = cfg.scale.map((s, i) => ({ transform: `scale(${s})`, offset: i / (cfg.scale.length - 1) }));
-    btn.animate(scales, { duration: 380, easing: "cubic-bezier(.4,0,.2,1)", fill: "none" });
+    // 1. Button scale bounce using inline style sequence
+    btn.style.transition = "transform 0.08s ease";
+    btn.style.transform = "scale(0.85)";
+    setTimeout(() => {
+      btn.style.transform = "scale(1.07)";
+      btn.style.transition = "transform 0.12s ease";
+    }, 80);
+    setTimeout(() => {
+      btn.style.transform = "scale(0.97)";
+      btn.style.transition = "transform 0.08s ease";
+    }, 190);
+    setTimeout(() => {
+      btn.style.transform = "scale(1)";
+      btn.style.transition = "transform 0.1s ease";
+    }, 270);
 
-    // 2. Ripple span
+    // 2. Ripple inside button
     const ripple = document.createElement("span");
-    ripple.style.cssText = `position:absolute;left:${cx}px;top:${cy}px;width:6px;height:6px;margin-left:-3px;margin-top:-3px;border-radius:50%;background:${cfg.color}88;pointer-events:none;z-index:20;`;
+    const rx = e.clientX - rect.left;
+    const ry = e.clientY - rect.top;
+    ripple.style.cssText = `
+      position:absolute;left:${rx}px;top:${ry}px;
+      width:4px;height:4px;margin-left:-2px;margin-top:-2px;
+      border-radius:50%;background:${cfg.color}99;
+      pointer-events:none;z-index:99;
+      transform:scale(1);opacity:0.8;
+      transition:transform 0.5s ease-out,opacity 0.5s ease-out;
+    `;
     btn.appendChild(ripple);
-    ripple.animate([
-      { transform: "scale(1)", opacity: 0.7 },
-      { transform: "scale(7)", opacity: 0 }
-    ], { duration: 550, easing: "ease-out", fill: "forwards" }).onfinish = () => ripple.remove();
+    requestAnimationFrame(() => {
+      ripple.style.transform = "scale(18)";
+      ripple.style.opacity = "0";
+    });
+    setTimeout(() => ripple.remove(), 520);
 
-    // 3. Particle burst — 5 dots fly outward
-    const angles = [0, 72, 144, 216, 288];
+    // 3. Particles — appended to BODY at fixed screen position (not clipped by button)
+    const angles = [0, 60, 120, 180, 240, 300];
     angles.forEach((angle, i) => {
       const rad = (angle * Math.PI) / 180;
-      const dist = 28 + i * 4;
+      const dist = 35 + Math.random() * 20;
       const tx = Math.cos(rad) * dist;
       const ty = Math.sin(rad) * dist;
+      const size = 5 + Math.floor(Math.random() * 5);
       const dot = document.createElement("span");
-      const size = 5 + (i % 3);
-      dot.style.cssText = `position:absolute;left:50%;top:50%;width:${size}px;height:${size}px;margin-left:-${size/2}px;margin-top:-${size/2}px;border-radius:50%;background:${cfg.particles[i % cfg.particles.length]};pointer-events:none;z-index:21;`;
-      btn.appendChild(dot);
-      dot.animate([
-        { transform: "translate(0,0) scale(1)", opacity: 1 },
-        { transform: `translate(${tx}px,${ty}px) scale(0)`, opacity: 0 }
-      ], { duration: 420, easing: "ease-out", fill: "forwards", delay: i * 20 }).onfinish = () => dot.remove();
+      dot.style.cssText = `
+        position:fixed;
+        left:${cx}px;top:${cy}px;
+        width:${size}px;height:${size}px;
+        margin-left:-${size/2}px;margin-top:-${size/2}px;
+        border-radius:50%;
+        background:${cfg.particles[i % cfg.particles.length]};
+        pointer-events:none;z-index:99999;
+        transform:translate(0,0) scale(1);opacity:1;
+        transition:transform ${0.4 + i*0.03}s ease-out, opacity ${0.35 + i*0.03}s ease-out;
+        transition-delay:${i*15}ms;
+      `;
+      document.body.appendChild(dot);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          dot.style.transform = `translate(${tx}px,${ty}px) scale(0)`;
+          dot.style.opacity = "0";
+        });
+      });
+      setTimeout(() => dot.remove(), 500 + i * 30);
     });
-
-    // 4. Glow flash on button
-    btn.animate([
-      { boxShadow: `0 0 0px 0px ${cfg.color}00` },
-      { boxShadow: `0 0 18px 6px ${cfg.color}66` },
-      { boxShadow: `0 0 0px 0px ${cfg.color}00` }
-    ], { duration: 400, easing: "ease-out" });
 
     onClick && onClick(e);
   };
@@ -1176,57 +1205,15 @@ function AdModal({ onClose, onReward, dark }) {
     };
   }, []);
 
-  // Detect tab switch — ignore blur caused by ad iframe click
+  // When user clicks iframe ad and comes back — mark as clicked
   React.useEffect(() => {
-    let blurTimeout = null;
-    let recentAdClick = false;
-
-    const onBlur = () => {
-      // When iframe (ad) is clicked, window loses focus briefly then regains it
-      // We set a flag and wait — if focus returns within 3s it was an ad click
-      blurTimeout = setTimeout(() => {
-        // Focus never came back in 3s = real tab switch = cancel
-        if (phase === "watching" && !recentAdClick) setPhase("cancelled");
-        blurTimeout = null;
-      }, 3000);
-    };
-
-    const onFocus = () => {
-      // User came back — could be from ad click or tab switch
-      if (blurTimeout) {
-        clearTimeout(blurTimeout);
-        blurTimeout = null;
-      }
-      // Mark as ad clicked so countdown end gives reward
-      recentAdClick = true;
-      adClicked.current = true;
-    };
-
-    // Only cancel on visibility hidden if no recent ad interaction
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden" && !recentAdClick) {
-        if (blurTimeout) clearTimeout(blurTimeout);
-        if (phase === "watching") setPhase("cancelled");
-      }
-      if (document.visibilityState === "visible") {
-        // Came back to page
-        recentAdClick = false;
-      }
-    };
-
-    window.addEventListener("blur", onBlur);
+    const onFocus = () => { adClicked.current = true; };
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      if (blurTimeout) clearTimeout(blurTimeout);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [phase]);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   // Countdown timer — when done, check if ad was clicked
+
   React.useEffect(() => {
     if (phase !== "watching") return;
     if (timeLeft <= 0) {
@@ -1288,19 +1275,6 @@ function AdModal({ onClose, onReward, dark }) {
           <div style={{fontSize:14,color:"#555",marginBottom:36}}>Ad watched successfully</div>
           <AnimBtn onClick={claim} type="primary" style={{width:"100%",maxWidth:300,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:18,padding:"16px 0",fontSize:16,fontWeight:900,cursor:"pointer",boxShadow:"0 8px 24px #6c3bfb44"}}>
             Claim Credits →
-          </AnimBtn>
-        </div>
-      )}
-
-      {phase === "cancelled" && (
-        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000",padding:32}}>
-          <div style={{width:90,height:90,borderRadius:"50%",background:"#ef444415",border:"2px solid #ef444444",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24}}>
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </div>
-          <div style={{fontWeight:900,fontSize:24,color:"#fff",marginBottom:8}}>Ad Cancelled</div>
-          <div style={{fontSize:13,color:"#555",marginBottom:36,textAlign:"center"}}>You switched tabs — reward was not granted</div>
-          <AnimBtn onClick={onClose} type="secondary" style={{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}}>
-            Close
           </AnimBtn>
         </div>
       )}
