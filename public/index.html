@@ -118,30 +118,156 @@ const PLATFORM_SEO_TIPS = {
   pinterest: ["Vertical 2:3 ratio pins get saved more","Add keyword to title AND description","Rich Pins get 36% more engagement","Post 5-10 times per day ideal","Seasonal content planned 45 days ahead"],
 };
 
-// Keyword strength analyzer
-function analyzeKeywords(text="", platform) {
-  const words = text.toLowerCase().replace(/[^a-z0-9 #]/g,"").split(/\s+/).filter(w=>w.length>3);
-  const hashtags = (text.match(/#\w+/g)||[]);
-  const hasEmoji = /\p{Emoji}/u.test(text);
-  const len = text.length;
-  const platformLimits = {instagram:2200,youtube:500,facebook:63206,twitter:280,linkedin:3000,tiktok:2200,pinterest:500};
-  const optimalLen = {instagram:150,youtube:350,facebook:100,twitter:220,linkedin:280,tiktok:90,pinterest:150};
-  const limit = platformLimits[platform]||500;
-  const opt = optimalLen[platform]||200;
-  const lengthScore = Math.min(100, Math.round((1 - Math.abs(len - opt) / opt) * 100));
-  const hashScore = platform==="twitter" ? (hashtags.length<=2?100:60) : Math.min(100, hashtags.length*8);
-  const uniqueWords = new Set(words).size;
-  const diversityScore = Math.min(100, uniqueWords*5);
-  const emojiBonus = hasEmoji ? 15 : 0;
-  const overall = Math.round((lengthScore*0.3 + hashScore*0.35 + diversityScore*0.25 + emojiBonus*0.1));
-  return {overall: Math.min(100,overall), lengthScore, hashScore, diversityScore, hashtags: hashtags.length, charCount: len, limit};
+// ─── Real SEO Analyzer ───────────────────────────────────────────────────────
+function analyzeKeywords(text="", platform, data={}) {
+  const fullText = typeof data === "object" ? Object.values(data).join(" ") : text;
+  const title = data.title || "";
+  const description = data.description || data.caption || data.post || data.tweet || "";
+  const tags = data.tags || data.hashtags || data.keywords || "";
+
+  const hashtags = (tags.match(/#\w+/g) || tags.split(/[,\s]+/).filter(t=>t.length>1) || []);
+  const hashCount = hashtags.length;
+  const hasEmoji = /\p{Emoji}/u.test(fullText);
+  const wordCount = description.split(/\s+/).filter(w=>w.length>2).length;
+  const charCount = description.length;
+  const titleLen = title.length;
+
+  const platformLimits = {instagram:2200,youtube:5000,facebook:63206,twitter:280,linkedin:3000,tiktok:2200,pinterest:500};
+  const limit = platformLimits[platform] || 2200;
+
+  // Platform-specific real scoring
+  let scores = {};
+  let suggestions = [];
+
+  if (platform === "youtube") {
+    // Title score (0-30)
+    let titleScore = 0;
+    if (titleLen >= 40 && titleLen <= 60) { titleScore = 30; }
+    else if (titleLen >= 30 && titleLen < 40) { titleScore = 20; suggestions.push("📝 Title should be 40-60 chars for best CTR (currently " + titleLen + ")"); }
+    else if (titleLen > 60) { titleScore = 15; suggestions.push("✂️ Title too long (" + titleLen + " chars) — YouTube truncates after 60"); }
+    else { titleScore = 5; suggestions.push("📝 Title too short — aim for 40-60 chars with main keyword"); }
+    // Has number in title?
+    if (/\d/.test(title)) titleScore = Math.min(30, titleScore + 5);
+    else suggestions.push("🔢 Add a number to title (e.g. '5 Ways...') — boosts CTR by 36%");
+    // Question or power word?
+    if (/how|why|what|best|top|secret|proven|ultimate/i.test(title)) titleScore = Math.min(30, titleScore + 3);
+    else suggestions.push("💡 Add power word to title: 'Best', 'How', 'Top', 'Ultimate'");
+
+    // Description score (0-35)
+    let descScore = 0;
+    if (wordCount >= 150) { descScore = 35; }
+    else if (wordCount >= 80) { descScore = 25; suggestions.push("📄 Description has " + wordCount + " words — aim for 150+ for SEO"); }
+    else if (wordCount >= 30) { descScore = 12; suggestions.push("📄 Description too short (" + wordCount + " words) — need 150+ words"); }
+    else { descScore = 0; suggestions.push("⚠️ Add a detailed description (150+ words) — critical for YouTube SEO"); }
+    // Keyword in first 100 chars?
+    if (description.slice(0,100).toLowerCase().split(/\s+/).length > 5) descScore = Math.min(35, descScore + 3);
+
+    // Tags score (0-25)
+    let tagScore = 0;
+    const tagArr = tags.split(",").map(t=>t.trim()).filter(t=>t.length>0);
+    if (tagArr.length >= 12) { tagScore = 25; }
+    else if (tagArr.length >= 7) { tagScore = 18; suggestions.push("🏷️ Add more tags (" + tagArr.length + "/15) — use 12-15 tags"); }
+    else if (tagArr.length >= 3) { tagScore = 10; suggestions.push("🏷️ Only " + tagArr.length + " tags — YouTube recommends 12-15"); }
+    else { tagScore = 0; suggestions.push("🏷️ Add 12-15 comma-separated tags for discoverability"); }
+
+    // Emoji/engagement (0-10)
+    let engScore = hasEmoji ? 7 : 3;
+    if (!hasEmoji) suggestions.push("😊 Add emojis to description — improves readability & click rate");
+
+    scores = { titleScore: Math.round((titleScore/30)*100), descScore: Math.round((descScore/35)*100), tagScore: Math.round((tagScore/25)*100), engScore: Math.round((engScore/10)*100) };
+    const overall = Math.round(titleScore + descScore + tagScore + engScore);
+    return { overall: Math.min(100, overall), ...scores, hashtags: hashCount, charCount, limit, suggestions };
+
+  } else if (platform === "instagram") {
+    const captionLen = charCount;
+    let captionScore = captionLen >= 138 && captionLen <= 300 ? 35 : captionLen >= 50 ? 20 : 5;
+    if (captionLen < 138) suggestions.push("📝 Caption too short — 138-300 chars is ideal for Instagram");
+    if (captionLen > 300) suggestions.push("✂️ Caption too long — first 125 chars are shown before 'more'");
+    let hashScore2 = hashCount >= 20 ? 35 : hashCount >= 10 ? 22 : hashCount >= 5 ? 12 : 3;
+    if (hashCount < 20) suggestions.push("# Use " + hashCount + " hashtags — Instagram recommends 20-30 for reach");
+    let emojiScore = hasEmoji ? 20 : 5;
+    if (!hasEmoji) suggestions.push("😊 Add emojis — Instagram captions with emojis get 48% more engagement");
+    let hookScore = description.split(/[.!?]/)[0]?.length <= 80 ? 10 : 5;
+    if (hookScore < 10) suggestions.push("🎯 First sentence too long — hook should be under 80 chars");
+    const overall = Math.min(100, captionScore + hashScore2 + emojiScore + hookScore);
+    scores = { captionScore: Math.round((captionScore/35)*100), hashScore: Math.round((hashScore2/35)*100), emojiScore: Math.round((emojiScore/20)*100), hookScore: Math.round((hookScore/10)*100) };
+    return { overall, ...scores, hashtags: hashCount, charCount, limit, suggestions };
+
+  } else if (platform === "twitter") {
+    let lenScore = charCount <= 100 ? 40 : charCount <= 200 ? 30 : charCount <= 280 ? 20 : 0;
+    if (charCount > 100) suggestions.push("✂️ Tweets under 100 chars get 17% more engagement (yours: " + charCount + ")");
+    if (charCount > 280) suggestions.push("🚫 Over Twitter's 280 char limit!");
+    let hashScore2 = hashCount <= 2 ? 30 : hashCount <= 4 ? 15 : 5;
+    if (hashCount > 2) suggestions.push("# Use max 2 hashtags — more reduces engagement on Twitter/X");
+    let emojiScore = hasEmoji ? 20 : 8;
+    if (!hasEmoji) suggestions.push("😊 Tweets with emojis get 25% more engagement");
+    let hookScore = /\?|!|→|🔥|💡/.test(description.slice(0,30)) ? 10 : 3;
+    if (hookScore < 10) suggestions.push("🎯 Open with a question or hook in first 30 chars");
+    const overall = Math.min(100, lenScore + hashScore2 + emojiScore + hookScore);
+    scores = { lengthScore: Math.round((lenScore/40)*100), hashScore: Math.round((hashScore2/30)*100), emojiScore: Math.round((emojiScore/20)*100) };
+    return { overall, ...scores, hashtags: hashCount, charCount, limit, suggestions };
+
+  } else if (platform === "linkedin") {
+    let lenScore = wordCount >= 200 && wordCount <= 400 ? 35 : wordCount >= 100 ? 22 : wordCount >= 50 ? 10 : 3;
+    if (wordCount < 200) suggestions.push("📄 Post has " + wordCount + " words — LinkedIn favors 200-400 words");
+    let hashScore2 = hashCount >= 3 && hashCount <= 5 ? 25 : hashCount >= 1 ? 15 : 0;
+    if (hashCount < 3) suggestions.push("# Add 3-5 hashtags — optimal for LinkedIn algorithm");
+    if (hashCount > 5) suggestions.push("# Reduce to 3-5 hashtags — too many looks spammy on LinkedIn");
+    let hookScore = description.split("\n")[0]?.length <= 100 ? 25 : 10;
+    if (hookScore < 25) suggestions.push("🎯 First line is your hook — keep it under 100 chars to prevent truncation");
+    let emojiScore = hasEmoji ? 15 : 5;
+    const overall = Math.min(100, lenScore + hashScore2 + hookScore + emojiScore);
+    scores = { lengthScore: Math.round((lenScore/35)*100), hashScore: Math.round((hashScore2/25)*100), hookScore: Math.round((hookScore/25)*100) };
+    return { overall, ...scores, hashtags: hashCount, charCount, limit, suggestions };
+
+  } else if (platform === "tiktok") {
+    let lenScore = charCount <= 100 ? 40 : charCount <= 150 ? 25 : 10;
+    if (charCount > 100) suggestions.push("✂️ TikTok caption should be under 100 chars (yours: " + charCount + ")");
+    let hashScore2 = hashCount >= 5 && hashCount <= 10 ? 35 : hashCount >= 3 ? 20 : 5;
+    if (hashCount < 5) suggestions.push("# Use 5-10 hashtags including #FYP and #ForYou");
+    if (hashCount > 10) suggestions.push("# Reduce to 5-10 hashtags for TikTok");
+    let hookScore = hasEmoji ? 15 : 5;
+    if (!hasEmoji) suggestions.push("😊 Use emojis — essential for TikTok captions");
+    const overall = Math.min(100, lenScore + hashScore2 + hookScore);
+    scores = { lengthScore: Math.round((lenScore/40)*100), hashScore: Math.round((hashScore2/35)*100) };
+    return { overall, ...scores, hashtags: hashCount, charCount, limit, suggestions };
+
+  } else if (platform === "facebook") {
+    let lenScore = charCount >= 40 && charCount <= 80 ? 40 : charCount >= 20 ? 25 : 10;
+    if (charCount > 80) suggestions.push("✂️ Facebook posts under 80 chars get 66% more engagement (yours: " + charCount + ")");
+    let hashScore2 = hashCount >= 5 && hashCount <= 10 ? 30 : hashCount >= 2 ? 18 : 5;
+    if (hashCount < 5) suggestions.push("# Add 5-10 hashtags for Facebook reach");
+    let emojiScore = hasEmoji ? 20 : 5;
+    if (!hasEmoji) suggestions.push("😊 Add emojis to your Facebook post");
+    let questionScore = /\?/.test(description) ? 10 : 3;
+    if (!(/\?/.test(description))) suggestions.push("❓ End with a question to drive comments");
+    const overall = Math.min(100, lenScore + hashScore2 + emojiScore + questionScore);
+    scores = { lengthScore: Math.round((lenScore/40)*100), hashScore: Math.round((hashScore2/30)*100) };
+    return { overall, ...scores, hashtags: hashCount, charCount, limit, suggestions };
+
+  } else if (platform === "pinterest") {
+    let titleScore = titleLen >= 40 && titleLen <= 100 ? 30 : titleLen >= 20 ? 18 : 5;
+    if (titleLen < 40) suggestions.push("📝 Pinterest title too short — aim for 40-100 chars with keywords");
+    let descScore = charCount >= 100 && charCount <= 500 ? 35 : charCount >= 50 ? 20 : 5;
+    if (charCount < 100) suggestions.push("📄 Description needs 100-500 chars for Pinterest SEO");
+    let kwScore = hashCount >= 8 ? 25 : hashCount >= 4 ? 15 : 5;
+    if (hashCount < 8) suggestions.push("🔑 Add 8-10 keywords — Pinterest is a search engine");
+    let emojiScore = hasEmoji ? 10 : 3;
+    const overall = Math.min(100, titleScore + descScore + kwScore + emojiScore);
+    scores = { titleScore: Math.round((titleScore/30)*100), descScore: Math.round((descScore/35)*100), kwScore: Math.round((kwScore/25)*100) };
+    return { overall, ...scores, hashtags: hashCount, charCount, limit, suggestions };
+  }
+
+  // Fallback
+  const overall = Math.min(100, 50 + (hashCount * 3) + (hasEmoji ? 10 : 0) + Math.min(20, wordCount/5));
+  return { overall, hashtags: hashCount, charCount, limit, suggestions };
 }
 
 function seoGrade(score) {
-  if(score>=85) return {label:"Excellent",color:"#22c55e",icon:"⚡"};
-  if(score>=70) return {label:"Good",color:"#3b82f6",icon:"👍"};
-  if(score>=50) return {label:"Fair",color:"#f59e0b",icon:"⚠️"};
-  return {label:"Needs Work",color:"#ef4444",icon:"❌"};
+  if(score>=85) return {label:"Excellent",color:"#22c55e"};
+  if(score>=70) return {label:"Good",color:"#3b82f6"};
+  if(score>=50) return {label:"Fair",color:"#f59e0b"};
+  return {label:"Needs Work",color:"#ef4444"};
 }
 
 // ─── VidIQ Panel Components ───────────────────────────────────────────────────
@@ -167,7 +293,6 @@ function ScoreBar({label, value, color}) {
 
 function VidIQPanel({platform, data, dark}) {
   const [activeSection, setActiveSection] = useState("seo");
-  // Always dark dashboard inside panel regardless of app theme
   const panelBg  = "#0f172a";
   const panelCard= "#1e293b";
   const panelBorder="#334155";
@@ -175,22 +300,37 @@ function VidIQPanel({platform, data, dark}) {
   const sub  = "#64748b";
   const accent = "#6c3bfb";
 
-  const allText = Object.values(data||{}).join(" ");
-  const kw = analyzeKeywords(allText, platform);
+  const kw = analyzeKeywords("", platform, data);
   const grade = seoGrade(kw.overall);
+
+  // Dynamic score bars based on platform
+  const scoreBars = platform === "youtube"
+    ? [{label:"TITLE QUALITY",val:kw.titleScore},{label:"DESCRIPTION DEPTH",val:kw.descScore},{label:"TAGS STRENGTH",val:kw.tagScore},{label:"ENGAGEMENT SIGNALS",val:kw.engScore}]
+    : platform === "instagram"
+    ? [{label:"CAPTION LENGTH",val:kw.captionScore},{label:"HASHTAG COUNT",val:kw.hashScore},{label:"EMOJI USAGE",val:kw.emojiScore},{label:"HOOK STRENGTH",val:kw.hookScore}]
+    : platform === "twitter"
+    ? [{label:"TWEET LENGTH",val:kw.lengthScore},{label:"HASHTAG USAGE",val:kw.hashScore},{label:"ENGAGEMENT SIGNALS",val:kw.emojiScore}]
+    : platform === "linkedin"
+    ? [{label:"POST LENGTH",val:kw.lengthScore},{label:"HASHTAGS",val:kw.hashScore},{label:"HOOK QUALITY",val:kw.hookScore}]
+    : platform === "tiktok"
+    ? [{label:"CAPTION LENGTH",val:kw.lengthScore},{label:"HASHTAG COUNT",val:kw.hashScore}]
+    : platform === "pinterest"
+    ? [{label:"TITLE QUALITY",val:kw.titleScore},{label:"DESCRIPTION",val:kw.descScore},{label:"KEYWORDS",val:kw.kwScore}]
+    : [{label:"CAPTION",val:kw.lengthScore||50},{label:"HASHTAGS",val:kw.hashScore||50}];
+
   const bestTimes = BEST_TIMES[platform]||[];
-  const todayIdx = new Date().getDay(); // 0=Sun
-  const dayOrder = [1,2,3,4,5,6,0]; // Mon→Sun
+  const todayIdx = new Date().getDay();
   const competitors = COMPETITOR_INSIGHTS[platform]||[];
   const trending = TRENDING_HASHTAGS[platform]||[];
   const seoTips = PLATFORM_SEO_TIPS[platform]||[];
 
   const tabs = [
-    {id:"seo",   label:"SEO",     icon:"📊"},
-    {id:"timing",label:"Timing",  icon:"⏰"},
-    {id:"trend", label:"Trends",  icon:"🔥"},
-    {id:"comp",  label:"Insights",icon:"🏆"},
-    {id:"tips",  label:"Tips",    icon:"🚀"},
+    {id:"seo",   label:"SEO",       icon:"📊"},
+    {id:"suggest",label:"Fix It",   icon:"💡"},
+    {id:"timing",label:"Timing",    icon:"⏰"},
+    {id:"trend", label:"Trends",    icon:"🔥"},
+    {id:"comp",  label:"Insights",  icon:"🏆"},
+    {id:"tips",  label:"Tips",      icon:"🚀"},
   ];
 
   return (
@@ -269,10 +409,9 @@ function VidIQPanel({platform, data, dark}) {
         {/* SEO */}
         {activeSection==="seo" && (
           <div className="fade-in">
-            <ScoreBar label="CONTENT LENGTH" value={kw.lengthScore}/>
-            <ScoreBar label="HASHTAG STRENGTH" value={kw.hashScore}/>
-            <ScoreBar label="KEYWORD DIVERSITY" value={kw.diversityScore}/>
-            {/* Character meter */}
+            {scoreBars.filter(b=>b.val!=null).map(b=>(
+              <ScoreBar key={b.label} label={b.label} value={b.val||0}/>
+            ))}
             <div style={{marginTop:12,background:"#1e293b",borderRadius:10,padding:"10px 12px",border:"1px solid #334155"}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                 <span style={{fontSize:10,color:"#64748b",letterSpacing:1}}>CHARACTER USAGE</span>
@@ -283,7 +422,6 @@ function VidIQPanel({platform, data, dark}) {
                 <div style={{height:"100%",width:`${Math.min(100,(kw.charCount/kw.limit)*100)}%`,background:kw.charCount>kw.limit?"linear-gradient(90deg,#ef444499,#ef4444)":"linear-gradient(90deg,#6c3bfb99,#22c55e)",borderRadius:8,boxShadow:kw.charCount>kw.limit?"0 0 8px #ef444488":"0 0 8px #22c55e88"}}/>
               </div>
             </div>
-            {/* Engagement prediction */}
             <div style={{marginTop:8,background:"linear-gradient(135deg,#1e293b,#1a1035)",borderRadius:10,padding:"10px 12px",border:"1px solid #6c3bfb33"}}>
               <div style={{fontSize:10,color:"#6c3bfb",fontWeight:800,letterSpacing:1,marginBottom:4}}>▶ ENGAGEMENT PREDICTION</div>
               <div style={{display:"flex",alignItems:"baseline",gap:6}}>
@@ -291,6 +429,37 @@ function VidIQPanel({platform, data, dark}) {
                 <span style={{fontSize:12,color:"#64748b"}}>% est. engagement rate</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Suggestions */}
+        {activeSection==="suggest" && (
+          <div className="fade-in">
+            <div style={{fontSize:10,color:"#475569",letterSpacing:1,marginBottom:10}}>
+              {kw.suggestions?.length ? `${kw.suggestions.length} IMPROVEMENTS FOUND` : "ALL CHECKS PASSED ✅"}
+            </div>
+            {kw.suggestions?.length === 0 && (
+              <div style={{textAlign:"center",padding:"20px 0"}}>
+                <div style={{fontSize:32,marginBottom:8}}>🎉</div>
+                <div style={{fontSize:14,fontWeight:800,color:"#22c55e"}}>Perfect Score!</div>
+                <div style={{fontSize:12,color:"#475569",marginTop:4}}>Your content is fully optimized</div>
+              </div>
+            )}
+            {(kw.suggestions||[]).map((s,i)=>(
+              <div key={i} style={{display:"flex",gap:10,padding:"9px 11px",background:i%2===0?"#1e293b":"#162032",borderRadius:9,marginBottom:6,border:"1px solid #334155",alignItems:"flex-start"}}>
+                <div style={{width:20,height:20,borderRadius:6,background:"linear-gradient(135deg,#f59e0b,#ef4444)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                  <span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{i+1}</span>
+                </div>
+                <span style={{fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{s}</span>
+              </div>
+            ))}
+            {kw.suggestions?.length > 0 && (
+              <div style={{marginTop:8,background:"#1e293b",borderRadius:10,padding:"9px 12px",border:"1px solid #6c3bfb33",textAlign:"center"}}>
+                <span style={{fontSize:11,color:"#6c3bfb",fontWeight:700}}>Fix these to boost your score from </span>
+                <span style={{fontSize:13,fontWeight:900,color:grade.color}}>{kw.overall}</span>
+                <span style={{fontSize:11,color:"#6c3bfb",fontWeight:700}}> → 95+</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -772,6 +941,22 @@ function EditableText({value}) {
   return <textarea value={val} onChange={e=>setVal(e.target.value)} style={{width:"100%",border:"1px solid #e8e0ff",borderRadius:8,padding:"8px 10px",fontSize:13,lineHeight:1.6,color:"#222",background:"#faf8ff",outline:"none",minHeight:72,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>;
 }
 
+function AnimBtn({onClick, children, style, title}) {
+  const [pressing, setPressing] = useState(false);
+  return (
+    <button
+      title={title}
+      onMouseDown={()=>setPressing(true)}
+      onMouseUp={()=>setPressing(false)}
+      onMouseLeave={()=>setPressing(false)}
+      onTouchStart={()=>setPressing(true)}
+      onTouchEnd={()=>setPressing(false)}
+      onClick={onClick}
+      style={{...style, transform: pressing?"scale(0.88)":"scale(1)", transition:"transform .12s cubic-bezier(.4,0,.2,1), box-shadow .12s", boxShadow: pressing?"0 0 0 3px #6c3bfb33":"none"}}
+    >{children}</button>
+  );
+}
+
 function ContentCard({platform, data, onRegen, dark}) {
   const p = PLATFORMS.find(x=>x.id===platform);
   if(!data) return null;
@@ -783,6 +968,8 @@ function ContentCard({platform, data, onRegen, dark}) {
   const bg = dark?"#1e1e1e":"#fff";
   const border = dark?"#333":"#e8e0ff";
   const text = dark?"#f0f0f0":"#1a1a2e";
+  const labelStyle = {fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4};
+
   return (
     <div className="fade-in" style={{background:bg,borderRadius:16,border:`1px solid ${border}`,marginBottom:14,overflow:"hidden"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:`1px solid ${border}`}}>
@@ -791,15 +978,33 @@ function ContentCard({platform, data, onRegen, dark}) {
         <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <span style={{fontSize:11,background:e.color+"22",color:e.color,border:`1px solid ${e.color}55`,borderRadius:6,padding:"2px 8px",fontWeight:700}}>{e.label} {score}/10</span>
           <CopyBtn text={allText} small/>
-          <button onClick={()=>onRegen(platform)} title="Regenerate" style={{background:"#6c3bfb11",border:"1px solid #6c3bfb44",borderRadius:8,cursor:"pointer",padding:"5px 10px",color:"#6c3bfb",display:"flex",alignItems:"center"}}>
+          <AnimBtn onClick={()=>onRegen(platform)} title="Regenerate" style={{background:"#6c3bfb11",border:"1px solid #6c3bfb44",borderRadius:8,cursor:"pointer",padding:"5px 10px",color:"#6c3bfb",display:"flex",alignItems:"center"}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
-          </button>
+          </AnimBtn>
         </div>
       </div>
       <div style={{padding:"12px 14px"}}>
-        {data.title && <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Title</div><EditableText value={data.title}/></div>}
-        {mainText && <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{data.tweet?"Tweet":data.post?"Post":"Caption"}</div><EditableText value={mainText}/></div>}
-        {secondary && <div><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{data.tags?"Tags":data.keywords?"Keywords":"Hashtags"}</div><div style={{fontSize:12,color:"#6c3bfb",lineHeight:1.9,wordBreak:"break-word"}}>{secondary}</div></div>}
+        {/* YouTube: show title first */}
+        {data.title && (
+          <div style={{marginBottom:10}}>
+            <div style={labelStyle}>Title</div>
+            <EditableText value={data.title}/>
+          </div>
+        )}
+        {/* Main content — for YouTube this is the description */}
+        {mainText && (
+          <div style={{marginBottom:10}}>
+            <div style={labelStyle}>{platform==="youtube"?"Description":data.tweet?"Tweet":data.post?"Post":"Caption"}</div>
+            <EditableText value={mainText}/>
+          </div>
+        )}
+        {/* Tags/hashtags */}
+        {secondary && (
+          <div style={{marginBottom:10}}>
+            <div style={labelStyle}>{data.tags?"Tags":data.keywords?"Keywords":"Hashtags"}</div>
+            <div style={{fontSize:12,color:"#6c3bfb",lineHeight:1.9,wordBreak:"break-word"}}>{secondary}</div>
+          </div>
+        )}
         <VidIQPanel platform={platform} data={data} dark={dark}/>
       </div>
     </div>
@@ -819,7 +1024,7 @@ const FREE_CREDITS  = 2;   // first visit
 const AD_REWARD     = 2;   // credits per ad
 const COST_PER_GEN  = 2;   // credits per generation
 const AD_COOLDOWN   = 60;  // seconds between ads
-const AD_WATCH_TIME = 6;   // seconds to watch ad
+const AD_WATCH_TIME = 8;   // seconds to watch ad
 
 function getCredits() {
   try {
@@ -853,19 +1058,15 @@ function setCooldownNow() {
 function AdModal({ onClose, onReward, dark }) {
   const [phase, setPhase]       = useState("watching");
   const [timeLeft, setTimeLeft] = useState(AD_WATCH_TIME);
-  const adKey = React.useRef(Date.now()); // unique key har baar — forces fresh ad load
+  const adClicked = React.useRef(false); // track if user clicked the ad
 
   // Trigger Adwixo interstitial fresh on every open
   React.useEffect(() => {
-    // Best approach: inject ad inside an iframe so it is completely isolated
-    // Each open = new iframe = fresh ad request, no caching issues
     const container = document.getElementById("adwixo-iframe-container");
     if (!container) return;
 
-    // Clear previous
     container.innerHTML = "";
 
-    // Create fresh iframe
     const iframe = document.createElement("iframe");
     iframe.style.width = "100%";
     iframe.style.height = "100%";
@@ -875,7 +1076,6 @@ function AdModal({ onClose, onReward, dark }) {
     iframe.setAttribute("scrolling", "no");
     container.appendChild(iframe);
 
-    // Write ad code inside iframe
     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
     iframeDoc.open();
     iframeDoc.write(`
@@ -899,30 +1099,29 @@ function AdModal({ onClose, onReward, dark }) {
     };
   }, []);
 
-  // Tab switch detection — ad click pe blur ignore karo
+  // Detect ad click via window blur (iframe click causes blur)
   React.useEffect(() => {
     let blurTimeout = null;
 
     const onBlur = () => {
-      // 1 second wait karo — agar user ad click karke wapas aaya
-      // to focus event fire hoga aur blur cancel ho jaayega
+      // Small delay — if focus comes back fast it's an iframe click (ad click)
       blurTimeout = setTimeout(() => {
+        // blur lasted > 800ms = real tab switch = cancel
         if (phase === "watching") setPhase("cancelled");
-      }, 1000);
+      }, 800);
     };
 
     const onFocus = () => {
-      // User wapas aaya — blur cancel karo (ad click tha, tab switch nahi)
       if (blurTimeout) {
+        // focus came back quickly = ad was clicked (not tab switch)
+        adClicked.current = true;
         clearTimeout(blurTimeout);
         blurTimeout = null;
       }
     };
 
     const onVisibility = () => {
-      // Actual tab switch — page hidden hua
       if (document.visibilityState === "hidden") {
-        // Turant cancel — yeh real tab switch hai
         if (blurTimeout) clearTimeout(blurTimeout);
         if (phase === "watching") setPhase("cancelled");
       }
@@ -940,10 +1139,18 @@ function AdModal({ onClose, onReward, dark }) {
     };
   }, [phase]);
 
-  // Countdown timer
+  // Countdown timer — when done, check if ad was clicked
   React.useEffect(() => {
     if (phase !== "watching") return;
-    if (timeLeft <= 0) { setPhase("done"); return; }
+    if (timeLeft <= 0) {
+      // Time up — check if user clicked the ad
+      if (adClicked.current) {
+        setPhase("done");
+      } else {
+        setPhase("notclicked");
+      }
+      return;
+    }
     const t = setTimeout(() => setTimeLeft(s => s - 1), 1000);
     return () => clearTimeout(t);
   }, [timeLeft, phase]);
@@ -954,10 +1161,6 @@ function AdModal({ onClose, onReward, dark }) {
     onReward(AD_REWARD);
     onClose();
   };
-
-  const bg   = dark ? "#1e1e1e" : "#fff";
-  const text = dark ? "#f0f0f0" : "#1a1a2e";
-  const sub  = dark ? "#888"    : "#666";
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:9999,background:"#000",display:"flex",flexDirection:"column"}}>
@@ -973,13 +1176,16 @@ function AdModal({ onClose, onReward, dark }) {
               <div style={{fontSize:12,color:"#333",marginTop:10,letterSpacing:1}}>AD LOADING…</div>
             </div>
 
-            {/* Timer + Cancel — overlay on top of ad, bottom right */}
-            <div style={{position:"absolute",bottom:16,right:16,zIndex:10,display:"flex",alignItems:"center",gap:8}}>
-              <button onClick={onClose} style={{background:"#000000aa",backdropFilter:"blur(6px)",border:"1px solid #ffffff22",borderRadius:8,padding:"6px 12px",color:"#aaa",fontSize:12,cursor:"pointer"}}>
+            {/* Timer + Cancel — overlay at bottom center */}
+            <div style={{position:"absolute",bottom:20,left:0,right:0,zIndex:10,display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+              <button onClick={onClose} style={{background:"#000000bb",backdropFilter:"blur(8px)",border:"1px solid #ffffff22",borderRadius:10,padding:"8px 16px",color:"#aaa",fontSize:13,cursor:"pointer"}}>
                 Cancel
               </button>
-              <div style={{width:42,height:42,borderRadius:"50%",background:"#000000cc",backdropFilter:"blur(6px)",border:"2px solid #6c3bfb",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 12px #6c3bfb66"}}>
-                <span style={{fontSize:17,fontWeight:900,color:"#6c3bfb"}}>{timeLeft}</span>
+              <div style={{width:46,height:46,borderRadius:"50%",background:"#000000bb",backdropFilter:"blur(8px)",border:"2px solid #6c3bfb",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 14px #6c3bfb77"}}>
+                <span style={{fontSize:18,fontWeight:900,color:"#6c3bfb"}}>{timeLeft}</span>
+              </div>
+              <div style={{background:"#000000bb",backdropFilter:"blur(8px)",border:"1px solid #6c3bfb33",borderRadius:10,padding:"8px 12px",fontSize:11,color:"#6c3bfb",fontWeight:700}}>
+                Tap ad to earn
               </div>
             </div>
           </div>
@@ -1006,6 +1212,22 @@ function AdModal({ onClose, onReward, dark }) {
           </div>
           <div style={{fontWeight:900,fontSize:24,color:"#fff",marginBottom:8}}>Ad Cancelled</div>
           <div style={{fontSize:13,color:"#555",marginBottom:36,textAlign:"center"}}>You switched tabs — reward was not granted</div>
+          <button onClick={onClose} style={{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}}>
+            Close
+          </button>
+        </div>
+      )}
+
+      {phase === "notclicked" && (
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000",padding:32}}>
+          <div style={{width:90,height:90,borderRadius:"50%",background:"#f59e0b15",border:"2px solid #f59e0b44",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,boxShadow:"0 0 24px #f59e0b33"}}>
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div style={{fontWeight:900,fontSize:24,color:"#fff",marginBottom:10}}>Ad Not Clicked</div>
+          <div style={{fontSize:13,color:"#555",marginBottom:8,textAlign:"center",lineHeight:1.7}}>
+            You must <span style={{color:"#f59e0b",fontWeight:700}}>tap the ad</span> at least once<br/>to earn your reward.
+          </div>
+          <div style={{fontSize:12,color:"#333",marginBottom:32,textAlign:"center"}}>Watch again and tap the ad to claim credits.</div>
           <button onClick={onClose} style={{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}}>
             Close
           </button>
@@ -1218,11 +1440,11 @@ function HomeScreen({dark}) {
         <button onClick={()=>setSelected(PLATFORMS.map(p=>p.id))} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:"#6c3bfb",fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Select All</button>
       </div>
       <div style={{padding:"12px 16px",borderTop:`1px solid ${border}`}}>
-        <button onClick={handleGenerate} disabled={generating||selected.length===0} style={{width:"100%",background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"15px 24px",fontSize:15,fontWeight:800,cursor:"pointer",opacity:selected.length===0?.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <AnimBtn onClick={handleGenerate} style={{width:"100%",background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"15px 24px",fontSize:15,fontWeight:800,cursor:"pointer",opacity:selected.length===0?.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           {generating
             ? <><svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".4"/><path d="M21 12a9 9 0 00-9-9" strokeLinecap="round"/></svg>Generating…</>
             : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" fill="#fff"/></svg>Generate for {selected.length} Platform{selected.length>1?"s":""}</>}
-        </button>
+        </AnimBtn>
       </div>
     </div>
   );
@@ -1290,15 +1512,15 @@ function HomeScreen({dark}) {
       </div>
       {/* Footer */}
       <div style={{display:"flex",gap:8,padding:"10px 16px",borderTop:`1px solid ${border}`}}>
-        <button onClick={copyAll} style={{flex:1,background:card,color:"#6c3bfb",border:`1.5px solid #6c3bfb44`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        <AnimBtn onClick={copyAll} style={{flex:1,background:card,color:"#6c3bfb",border:`1.5px solid #6c3bfb44`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy All
-        </button>
-        <button onClick={saveToSaved} style={{flex:1,background:card,color:"#E60023",border:`1.5px solid #E6002344`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        </AnimBtn>
+        <AnimBtn onClick={saveToSaved} style={{flex:1,background:card,color:"#E60023",border:`1.5px solid #E6002344`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>Save
-        </button>
-        <button onClick={()=>setStep("platforms")} style={{flex:1,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        </AnimBtn>
+        <AnimBtn onClick={()=>setStep("platforms")} style={{flex:1,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>Redo
-        </button>
+        </AnimBtn>
       </div>
     </div>
   );
