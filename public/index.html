@@ -8,7 +8,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<script async zone="98686" src="https://adwixo.com/teg/js/interwixo.js"></script>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   html,body,#root{height:100%;width:100%;overflow:hidden}
@@ -43,9 +42,25 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:system-ui;background:#0f0f1a;">
+    <div style="width:44px;height:44px;border:3px solid #6c3bfb33;border-top-color:#6c3bfb;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px;"></div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    <div style="color:#6c3bfb;font-weight:700;font-size:14px;letter-spacing:1px;">LOADING…</div>
+  </div>
+</div>
+<script>
+  window.addEventListener('error', function(e) {
+    document.getElementById('root').innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:system-ui;background:#0f0f1a;padding:24px;text-align:center;">' +
+      '<div style="font-size:32px;margin-bottom:12px;">⚠️</div>' +
+      '<div style="color:#ef4444;font-weight:800;font-size:18px;margin-bottom:8px;">Error Loading App</div>' +
+      '<div style="color:#64748b;font-size:13px;max-width:300px;line-height:1.6;">' + (e.message||'Unknown error') + '</div>' +
+      '</div>';
+  });
+</script>
 
-<script type="text/babel">
+<script type="text/babel" data-presets="react">
 const { useState, useRef, useCallback } = React;
 
 // ─── API KEYS (dono fill karo) ────────────────────────────────────────────────
@@ -308,6 +323,45 @@ function ScoreBar({label, value, color}) {
   );
 }
 
+function GaugeCircle({value, color}) {
+  const ref = useRef(null);
+  React.useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const W = 80, H = 80, cx = 40, cy = 40, r = 30;
+    ctx.clearRect(0, 0, W, H);
+    // Track
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 7;
+    ctx.stroke();
+    // Value arc
+    const start = -Math.PI / 2;
+    const end = start + (value / 100) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, start, end);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Score text
+    ctx.fillStyle = color;
+    ctx.font = 'bold 18px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(value, cx, cy - 5);
+    ctx.fillStyle = '#475569';
+    ctx.font = '8px system-ui';
+    ctx.fillText('SCORE', cx, cy + 12);
+  }, [value, color]);
+  return React.createElement('canvas', {ref, width:80, height:80, style:{flexShrink:0}});
+}
+
 function VidIQPanel({platform, data, dark}) {
   const [activeSection, setActiveSection] = useState("seo");
   const panelBg  = "#0f172a";
@@ -367,32 +421,8 @@ function VidIQPanel({platform, data, dark}) {
       {/* ── Big Score Strip ── */}
       <div style={{background:"#0f172a",padding:"14px 14px 10px",borderBottom:"1px solid #1e293b"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {/* Radial gauge */}
-          <div style={{position:"relative",width:80,height:80,flexShrink:0}}>
-            <svg viewBox="0 0 80 80" style={{width:80,height:80}}>
-              {/* Glow filter */}
-              <defs>
-                <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-              </defs>
-              {/* Track */}
-              <circle cx="40" cy="40" r="32" fill="none" stroke="#1e293b" strokeWidth="7"/>
-              {/* Tick marks */}
-              {Array.from({length:10},(_,i)=>{
-                const angle = (i/10)*2*Math.PI - Math.PI/2;
-                const r1=36,r2=38;
-                return <line key={i} x1={40+r1*Math.cos(angle)} y1={40+r1*Math.sin(angle)} x2={40+r2*Math.cos(angle)} y2={40+r2*Math.sin(angle)} stroke="#334155" strokeWidth="1.5"/>;
-              })}
-              {/* Value arc */}
-              <circle cx="40" cy="40" r="32" fill="none" stroke={grade.color} strokeWidth="7"
-                strokeDasharray={`${(kw.overall/100)*201} 201`}
-                strokeLinecap="round" strokeDashoffset="0"
-                style={{transform:"rotate(-90deg)",transformOrigin:"40px 40px",transition:"stroke-dasharray .8s cubic-bezier(.4,0,.2,1)"}}
-                filter="url(#glow)"/>
-              {/* Center */}
-              <text x="40" y="37" textAnchor="middle" fill={grade.color} fontSize="18" fontWeight="900" fontFamily="system-ui">{kw.overall}</text>
-              <text x="40" y="50" textAnchor="middle" fill="#475569" fontSize="8" fontFamily="system-ui">SCORE</text>
-            </svg>
-          </div>
+          {/* Radial gauge — canvas based, no SVG parser issues */}
+          <GaugeCircle value={kw.overall} color={grade.color} />
           {/* Stat tiles */}
           <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
             {[
@@ -1166,51 +1196,47 @@ function AdModal({ onClose, onReward, dark }) {
   const [timeLeft, setTimeLeft] = useState(AD_WATCH_TIME);
   const adClicked = React.useRef(false); // track if user clicked the ad
 
-  // Trigger Adwixo interstitial fresh on every open
+  // Inject Adwixo ad script directly into the page (not iframe)
   React.useEffect(() => {
-    const container = document.getElementById("adwixo-iframe-container");
+    const container = document.getElementById("adwixo-ad-slot");
     if (!container) return;
-
     container.innerHTML = "";
 
-    const iframe = document.createElement("iframe");
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.position = "absolute";
-    iframe.style.inset = "0";
-    iframe.style.border = "none";
-    iframe.setAttribute("scrolling", "no");
-    container.appendChild(iframe);
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-    iframeDoc.open();
-    iframeDoc.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8"/>
-        <style>
-          html,body { margin:0; padding:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#111; }
-        </style>
-      </head>
-      <body>
-        <script async zone="98686" src="https://adwixo.com/teg/js/interwixo.js?cb=${Date.now()}"><\/script>
-      </body>
-      </html>
-    `);
-    iframeDoc.close();
+    // Create script tag and append directly
+    const script = document.createElement("script");
+    script.src = `https://adwixo.com/teg/js/interwixo.js?cb=${Date.now()}`;
+    script.setAttribute("zone", "98686");
+    script.async = true;
+    container.appendChild(script);
 
     return () => {
       if (container) container.innerHTML = "";
     };
   }, []);
 
-  // When user clicks iframe ad and comes back — mark as clicked
+  // When user clicks ad (window loses focus) and comes back → give reward immediately
   React.useEffect(() => {
-    const onFocus = () => { adClicked.current = true; };
+    let wentToAd = false;
+
+    const onBlur = () => {
+      if (phase === "watching") wentToAd = true;
+    };
+
+    const onFocus = () => {
+      if (wentToAd && phase === "watching") {
+        wentToAd = false;
+        adClicked.current = true;
+        setPhase("done"); // ✅ reward immediately on return
+      }
+    };
+
+    window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, []);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [phase]);
 
   // Countdown timer — when done, check if ad was clicked
 
@@ -1242,12 +1268,14 @@ function AdModal({ onClose, onReward, dark }) {
       {phase === "watching" && (
         <>
           {/* Ad — fills entire screen */}
-          <div style={{flex:1,position:"relative",background:"#111",overflow:"hidden"}}>
-            <div id="adwixo-iframe-container" style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
-            {/* Fallback placeholder */}
+          <div style={{flex:1,position:"relative",background:"#000",overflow:"hidden"}}>
+            {/* Direct ad slot — script injected here */}
+            <div id="adwixo-ad-slot" style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}/>
+            {/* Placeholder shown while ad loads */}
             <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",zIndex:-1}}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-              <div style={{fontSize:12,color:"#333",marginTop:10,letterSpacing:1}}>AD LOADING…</div>
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#222" strokeWidth="1"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <div style={{fontSize:12,color:"#222",marginTop:12,letterSpacing:2}}>AD LOADING…</div>
+            </div>
             </div>
 
             {/* Timer + Cancel — overlay at bottom center */}
@@ -1916,5 +1944,6 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
+<script async defer zone="98686" src="https://adwixo.com/teg/js/interwixo.js"></script>
 </body>
 </html>
