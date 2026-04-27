@@ -146,17 +146,20 @@ function seoGrade(score) {
 
 // ─── VidIQ Panel Components ───────────────────────────────────────────────────
 
-function ScoreBar({label, value, color, dark}) {
-  const bg = dark?"#2a2a2a":"#f3f0ff";
-  const text = dark?"#f0f0f0":"#1a1a2e";
+function ScoreBar({label, value, color}) {
+  const colors = {
+    low:"#ef4444", mid:"#f59e0b", high:"#22c55e"
+  };
+  const barColor = color || (value>=70?colors.high:value>=45?colors.mid:colors.low);
   return (
-    <div style={{marginBottom:8}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-        <span style={{fontSize:11,color:dark?"#aaa":"#666"}}>{label}</span>
-        <span style={{fontSize:11,fontWeight:700,color}}>{value}%</span>
+    <div style={{marginBottom:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+        <span style={{fontSize:11,color:"#94a3b8",letterSpacing:.3}}>{label}</span>
+        <span style={{fontSize:12,fontWeight:800,color:barColor,fontVariantNumeric:"tabular-nums"}}>{value}<span style={{fontSize:9,color:"#64748b"}}>/100</span></span>
       </div>
-      <div style={{height:5,background:bg,borderRadius:4,overflow:"hidden"}}>
-        <div style={{height:"100%",width:`${value}%`,background:color,borderRadius:4,transition:"width .5s ease"}}/>
+      <div style={{height:6,background:"#1e293b",borderRadius:6,overflow:"hidden",position:"relative"}}>
+        <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(90deg,transparent,transparent 9px,#0f172a 9px,#0f172a 10px)"}}/>
+        <div style={{height:"100%",width:`${value}%`,background:`linear-gradient(90deg,${barColor}99,${barColor})`,borderRadius:6,transition:"width .7s cubic-bezier(.4,0,.2,1)",position:"relative",boxShadow:`0 0 8px ${barColor}66`}}/>
       </div>
     </div>
   );
@@ -164,11 +167,12 @@ function ScoreBar({label, value, color, dark}) {
 
 function VidIQPanel({platform, data, dark}) {
   const [activeSection, setActiveSection] = useState("seo");
-  const text = dark?"#f0f0f0":"#1a1a2e";
-  const sub  = dark?"#888":"#666";
-  const card = dark?"#1e1e1e":"#fff";
-  const border= dark?"#333":"#e8e0ff";
-  const bg   = dark?"#161616":"#fafafa";
+  // Always dark dashboard inside panel regardless of app theme
+  const panelBg  = "#0f172a";
+  const panelCard= "#1e293b";
+  const panelBorder="#334155";
+  const text = "#e2e8f0";
+  const sub  = "#64748b";
   const accent = "#6c3bfb";
 
   const allText = Object.values(data||{}).join(" ");
@@ -182,154 +186,218 @@ function VidIQPanel({platform, data, dark}) {
   const seoTips = PLATFORM_SEO_TIPS[platform]||[];
 
   const tabs = [
-    {id:"seo",label:"SEO Score",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" strokeLinecap="round"/></svg>},
-    {id:"timing",label:"Best Time",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14" strokeLinecap="round"/></svg>},
-    {id:"trending",label:"Trending",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>},
-    {id:"competitor",label:"Insights",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>},
-    {id:"tips",label:"Pro Tips",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3M6.343 6.343l-.707-.707M12 21v-1M17.657 17.657l-.707-.707M6.343 17.657l-.707.707M17.657 6.343l-.707-.707"/><circle cx="12" cy="12" r="4"/></svg>},
+    {id:"seo",   label:"SEO",     icon:"📊"},
+    {id:"timing",label:"Timing",  icon:"⏰"},
+    {id:"trend", label:"Trends",  icon:"🔥"},
+    {id:"comp",  label:"Insights",icon:"🏆"},
+    {id:"tips",  label:"Tips",    icon:"🚀"},
   ];
 
   return (
-    <div style={{background:bg,borderRadius:16,border:`1px solid ${border}`,marginTop:12,overflow:"hidden"}}>
-      {/* VidIQ Header */}
-      <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:`linear-gradient(135deg,${accent}22,${accent}08)`,borderBottom:`1px solid ${border}`}}>
-        <div style={{width:26,height:26,borderRadius:8,background:accent,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+    <div style={{borderRadius:16,overflow:"hidden",marginTop:14,border:"1px solid #1e293b",boxShadow:"0 0 0 1px #0f172a, 0 8px 32px #0008"}}>
+
+      {/* ── Header bar ── */}
+      <div style={{background:"linear-gradient(90deg,#0f172a 0%,#1a1035 50%,#0f172a 100%)",padding:"10px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid #1e293b"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#6c3bfb",boxShadow:"0 0 8px #6c3bfb"}}/>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e"}}/>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b",boxShadow:"0 0 8px #f59e0b"}}/>
         </div>
-        <span style={{fontWeight:800,fontSize:13,color:accent}}>VidIQ Analytics</span>
-        <div style={{marginLeft:"auto",background:grade.color+"22",color:grade.color,border:`1px solid ${grade.color}55`,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:800}}>
-          {grade.icon} {grade.label}
+        <span style={{fontFamily:"'Courier New',monospace",fontSize:11,color:"#475569",letterSpacing:2,textTransform:"uppercase",flex:1,textAlign:"center"}}>◈ Analytics Dashboard</span>
+        <div style={{padding:"2px 8px",borderRadius:4,background:grade.color+"20",border:`1px solid ${grade.color}55`,fontSize:10,fontWeight:800,color:grade.color,letterSpacing:.5}}>{grade.label.toUpperCase()}</div>
+      </div>
+
+      {/* ── Big Score Strip ── */}
+      <div style={{background:"#0f172a",padding:"14px 14px 10px",borderBottom:"1px solid #1e293b"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {/* Radial gauge */}
+          <div style={{position:"relative",width:80,height:80,flexShrink:0}}>
+            <svg viewBox="0 0 80 80" style={{width:80,height:80}}>
+              {/* Glow filter */}
+              <defs>
+                <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+              </defs>
+              {/* Track */}
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#1e293b" strokeWidth="7"/>
+              {/* Tick marks */}
+              {Array.from({length:10},(_,i)=>{
+                const angle = (i/10)*2*Math.PI - Math.PI/2;
+                const r1=36,r2=38;
+                return <line key={i} x1={40+r1*Math.cos(angle)} y1={40+r1*Math.sin(angle)} x2={40+r2*Math.cos(angle)} y2={40+r2*Math.sin(angle)} stroke="#334155" strokeWidth="1.5"/>;
+              })}
+              {/* Value arc */}
+              <circle cx="40" cy="40" r="32" fill="none" stroke={grade.color} strokeWidth="7"
+                strokeDasharray={`${(kw.overall/100)*201} 201`}
+                strokeLinecap="round" strokeDashoffset="0"
+                style={{transform:"rotate(-90deg)",transformOrigin:"40px 40px",transition:"stroke-dasharray .8s cubic-bezier(.4,0,.2,1)"}}
+                filter="url(#glow)"/>
+              {/* Center */}
+              <text x="40" y="37" textAnchor="middle" fill={grade.color} fontSize="18" fontWeight="900" fontFamily="system-ui">{kw.overall}</text>
+              <text x="40" y="50" textAnchor="middle" fill="#475569" fontSize="8" fontFamily="system-ui">SCORE</text>
+            </svg>
+          </div>
+          {/* Stat tiles */}
+          <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+            {[
+              {label:"Characters",val:kw.charCount,unit:"",color:"#38bdf8"},
+              {label:"Hashtags",val:kw.hashtags,unit:"tags",color:"#a78bfa"},
+              {label:"Char Limit",val:Math.round((kw.charCount/kw.limit)*100),unit:"%",color:kw.charCount>kw.limit?"#ef4444":"#34d399"},
+              {label:"Engagement",val:kw.overall>=80?"High":kw.overall>=60?"Mid":"Low",unit:"",color:kw.overall>=80?"#22c55e":kw.overall>=60?"#f59e0b":"#ef4444"},
+            ].map((s,i)=>(
+              <div key={i} style={{background:"#1e293b",borderRadius:8,padding:"6px 8px",border:`1px solid ${s.color}22`}}>
+                <div style={{fontSize:10,color:"#475569",marginBottom:2,letterSpacing:.3}}>{s.label.toUpperCase()}</div>
+                <div style={{fontSize:14,fontWeight:900,color:s.color,fontVariantNumeric:"tabular-nums"}}>{s.val}<span style={{fontSize:9,color:"#475569",marginLeft:1}}>{s.unit}</span></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Tab Pills */}
-      <div style={{display:"flex",overflowX:"auto",padding:"8px 10px 0",gap:4,scrollbarWidth:"none"}}>
+      {/* ── Tab Navigation ── */}
+      <div style={{background:"#0f172a",display:"flex",borderBottom:"1px solid #1e293b",overflowX:"auto",scrollbarWidth:"none"}}>
         {tabs.map(t=>(
-          <button key={t.id} onClick={()=>setActiveSection(t.id)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:20,border:`1px solid ${activeSection===t.id?accent:border}`,background:activeSection===t.id?accent+"15":"transparent",cursor:"pointer",fontSize:11,fontWeight:700,color:activeSection===t.id?accent:sub,transition:"all .2s"}}>
-            {t.icon}{t.label}
+          <button key={t.id} onClick={()=>setActiveSection(t.id)} style={{flex:1,minWidth:60,padding:"9px 4px",border:"none",background:"none",cursor:"pointer",fontSize:10,fontWeight:700,color:activeSection===t.id?"#6c3bfb":"#475569",borderBottom:`2px solid ${activeSection===t.id?"#6c3bfb":"transparent"}`,transition:"all .2s",letterSpacing:.3,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+            <span style={{fontSize:14}}>{t.icon}</span>
+            {t.label}
           </button>
         ))}
       </div>
 
-      <div style={{padding:"12px 14px"}}>
+      {/* ── Panel Body ── */}
+      <div style={{background:"#0f172a",padding:"12px 14px"}}>
 
-        {/* ── SEO Score ── */}
+        {/* SEO */}
         {activeSection==="seo" && (
           <div className="fade-in">
-            <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:14}}>
-              <div style={{position:"relative",width:72,height:72,flexShrink:0}}>
-                <svg viewBox="0 0 36 36" style={{width:72,height:72,transform:"rotate(-90deg)"}}>
-                  <circle cx="18" cy="18" r="15" fill="none" stroke={dark?"#333":"#f0ebff"} strokeWidth="3"/>
-                  <circle cx="18" cy="18" r="15" fill="none" stroke={grade.color} strokeWidth="3" strokeDasharray={`${(kw.overall/100)*94.25} 94.25`} strokeLinecap="round"/>
-                </svg>
-                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{fontWeight:900,fontSize:18,color:grade.color,lineHeight:1}}>{kw.overall}</span>
-                  <span style={{fontSize:9,color:sub}}>/ 100</span>
-                </div>
+            <ScoreBar label="CONTENT LENGTH" value={kw.lengthScore}/>
+            <ScoreBar label="HASHTAG STRENGTH" value={kw.hashScore}/>
+            <ScoreBar label="KEYWORD DIVERSITY" value={kw.diversityScore}/>
+            {/* Character meter */}
+            <div style={{marginTop:12,background:"#1e293b",borderRadius:10,padding:"10px 12px",border:"1px solid #334155"}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                <span style={{fontSize:10,color:"#64748b",letterSpacing:1}}>CHARACTER USAGE</span>
+                <span style={{fontSize:10,fontWeight:800,color:kw.charCount>kw.limit?"#ef4444":"#34d399"}}>{kw.charCount} / {kw.limit}</span>
               </div>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:14,color:text,marginBottom:2}}>SEO Score</div>
-                <div style={{fontSize:12,color:sub}}>{kw.charCount} chars · {kw.hashtags} hashtags</div>
-                <div style={{fontSize:11,color:grade.color,fontWeight:700,marginTop:3}}>{grade.icon} {grade.label}</div>
+              <div style={{height:8,background:"#0f172a",borderRadius:8,overflow:"hidden",position:"relative"}}>
+                <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(90deg,transparent,transparent 19px,#1e293b 19px,#1e293b 20px)"}}/>
+                <div style={{height:"100%",width:`${Math.min(100,(kw.charCount/kw.limit)*100)}%`,background:kw.charCount>kw.limit?"linear-gradient(90deg,#ef444499,#ef4444)":"linear-gradient(90deg,#6c3bfb99,#22c55e)",borderRadius:8,boxShadow:kw.charCount>kw.limit?"0 0 8px #ef444488":"0 0 8px #22c55e88"}}/>
               </div>
             </div>
-            <ScoreBar label="Content Length" value={kw.lengthScore} color="#6c3bfb" dark={dark}/>
-            <ScoreBar label="Hashtag Strength" value={kw.hashScore} color="#f59e0b" dark={dark}/>
-            <ScoreBar label="Keyword Diversity" value={kw.diversityScore} color="#22c55e" dark={dark}/>
-            <div style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:10,padding:"8px 12px",marginTop:8}}>
-              <div style={{fontSize:11,fontWeight:700,color:accent,marginBottom:4}}>📊 Character Limit</div>
-              <div style={{height:5,background:dark?"#333":"#e8e0ff",borderRadius:4,overflow:"hidden",marginBottom:4}}>
-                <div style={{height:"100%",width:`${Math.min(100,(kw.charCount/kw.limit)*100)}%`,background:kw.charCount>kw.limit?"#ef4444":accent,borderRadius:4}}/>
+            {/* Engagement prediction */}
+            <div style={{marginTop:8,background:"linear-gradient(135deg,#1e293b,#1a1035)",borderRadius:10,padding:"10px 12px",border:"1px solid #6c3bfb33"}}>
+              <div style={{fontSize:10,color:"#6c3bfb",fontWeight:800,letterSpacing:1,marginBottom:4}}>▶ ENGAGEMENT PREDICTION</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+                <span style={{fontSize:22,fontWeight:900,color:kw.overall>=80?"#22c55e":kw.overall>=60?"#f59e0b":"#ef4444",lineHeight:1}}>{kw.overall>=80?"4.5–7.2":kw.overall>=60?"2.1–4.4":"0.5–2.0"}</span>
+                <span style={{fontSize:12,color:"#64748b"}}>% est. engagement rate</span>
               </div>
-              <div style={{fontSize:10,color:sub}}>{kw.charCount} / {kw.limit} characters used</div>
             </div>
           </div>
         )}
 
-        {/* ── Best Times ── */}
+        {/* Timing */}
         {activeSection==="timing" && (
           <div className="fade-in">
-            <div style={{fontSize:12,fontWeight:700,color:text,marginBottom:10}}>📅 Best Posting Times (IST)</div>
+            <div style={{fontSize:10,color:"#475569",letterSpacing:1,marginBottom:10}}>BEST POSTING TIMES — IST</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
-              {dayOrder.map((dayIdx,i)=>{
-                const item = bestTimes[i]||{};
-                const isToday = dayIdx === (todayIdx===0?6:todayIdx-1);
+              {(BEST_TIMES[platform]||[]).map((item,i)=>{
+                const todayIdx = new Date().getDay();
+                const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+                const isToday = item.day===days[todayIdx];
                 return (
-                  <div key={i} style={{textAlign:"center",padding:"6px 2px",borderRadius:8,background:isToday?accent+"22":dark?"#2a2a2a":"#f5f0ff",border:`1px solid ${isToday?accent:border}`,position:"relative"}}>
-                    <div style={{fontSize:9,fontWeight:700,color:isToday?accent:sub,marginBottom:2}}>{item.day}</div>
-                    <div style={{fontSize:8,color:isToday?accent:sub,lineHeight:1.2}}>{item.time?.replace(":00","")}</div>
-                    {isToday && <div style={{position:"absolute",top:-4,right:-4,width:8,height:8,borderRadius:"50%",background:accent}}/>}
+                  <div key={i} style={{textAlign:"center",padding:"7px 2px",borderRadius:8,background:isToday?"#6c3bfb22":"#1e293b",border:`1px solid ${isToday?"#6c3bfb":"#334155"}`,position:"relative",transition:"all .2s"}}>
+                    {isToday && <div style={{position:"absolute",top:3,right:3,width:5,height:5,borderRadius:"50%",background:"#6c3bfb",boxShadow:"0 0 6px #6c3bfb"}}/>}
+                    <div style={{fontSize:8,fontWeight:800,color:isToday?"#a78bfa":"#475569",marginBottom:3,letterSpacing:.5}}>{item.day}</div>
+                    <div style={{fontSize:9,fontWeight:700,color:isToday?"#e2e8f0":"#64748b",lineHeight:1.2}}>{item.time?.replace(":00 "," ")}</div>
                   </div>
                 );
               })}
             </div>
-            <div style={{background:dark?"#2a2a2a":"#f0f9ff",borderRadius:10,padding:"8px 12px",marginTop:10,border:`1px solid ${accent}33`}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#3b82f6",marginBottom:3}}>⏰ Today's Best Window</div>
-              <div style={{fontSize:13,fontWeight:800,color:text}}>{bestTimes[todayIdx===0?6:todayIdx-1]?.time||"9:00 AM"} – {bestTimes[todayIdx===0?6:todayIdx-1]?.time?.includes("PM")?bestTimes[todayIdx===0?6:todayIdx-1]?.time?.replace(/(\d+):/, m=>String(parseInt(m)+2)+":"):"11:00 AM"}</div>
-              <div style={{fontSize:11,color:sub,marginTop:1}}>Highest audience online window</div>
+            <div style={{marginTop:10,background:"#1e293b",borderRadius:10,padding:"10px 12px",border:"1px solid #38bdf833"}}>
+              <div style={{fontSize:10,color:"#38bdf8",fontWeight:800,letterSpacing:1,marginBottom:4}}>OPTIMAL WINDOW TODAY</div>
+              <div style={{fontSize:16,fontWeight:900,color:"#e2e8f0"}}>{(BEST_TIMES[platform]||[{}])[new Date().getDay()===0?6:new Date().getDay()-1]?.time||"9:00 AM"}</div>
+              <div style={{fontSize:11,color:"#475569",marginTop:2}}>Peak audience activity — post now for max reach</div>
+            </div>
+            {/* Heatmap visual */}
+            <div style={{marginTop:8,background:"#1e293b",borderRadius:10,padding:"10px 12px",border:"1px solid #334155"}}>
+              <div style={{fontSize:10,color:"#475569",letterSpacing:1,marginBottom:8}}>WEEKLY REACH HEATMAP</div>
+              <div style={{display:"flex",gap:3,alignItems:"flex-end",height:40}}>
+                {[65,80,55,90,75,60,45].map((h,i)=>(
+                  <div key={i} style={{flex:1,height:`${h}%`,borderRadius:"3px 3px 0 0",background:`linear-gradient(to top,#6c3bfb${Math.round(h*2.55).toString(16).padStart(2,"0")},#a78bfa${Math.round(h*2).toString(16).padStart(2,"0")})`,opacity:i===new Date().getDay()?1:.5,boxShadow:i===new Date().getDay()?"0 0 8px #6c3bfb88":"none"}}/>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:3,marginTop:3}}>
+                {["M","T","W","T","F","S","S"].map((d,i)=>(
+                  <div key={i} style={{flex:1,textAlign:"center",fontSize:9,color:i===new Date().getDay()-1?"#a78bfa":"#334155",fontWeight:700}}>{d}</div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* ── Trending Hashtags ── */}
-        {activeSection==="trending" && (
+        {/* Trending */}
+        {activeSection==="trend" && (
           <div className="fade-in">
-            <div style={{fontSize:12,fontWeight:700,color:text,marginBottom:10}}>🔥 Trending Now</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-              {trending.map((tag,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:20,background:i<3?accent+"22":dark?"#2a2a2a":"#f5f0ff",border:`1px solid ${i<3?accent:border}`,cursor:"pointer"}}
-                  onClick={()=>navigator.clipboard.writeText(tag).catch(()=>{})}>
-                  {i<3 && <svg width="8" height="8" viewBox="0 0 24 24" fill={accent}><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z"/></svg>}
-                  <span style={{fontSize:11,fontWeight:700,color:i<3?accent:sub}}>{tag}</span>
-                </div>
+            <div style={{fontSize:10,color:"#475569",letterSpacing:1,marginBottom:10}}>TRENDING TAGS — TAP TO COPY</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {(TRENDING_HASHTAGS[platform]||[]).map((tag,i)=>(
+                <button key={i} onClick={()=>navigator.clipboard.writeText(tag).catch(()=>{})} style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:6,background:i<3?"linear-gradient(135deg,#6c3bfb33,#a78bfa22)":"#1e293b",border:`1px solid ${i<3?"#6c3bfb55":"#334155"}`,cursor:"pointer",transition:"all .15s",outline:"none"}}>
+                  {i<3 && <div style={{width:4,height:4,borderRadius:"50%",background:"#6c3bfb",boxShadow:"0 0 4px #6c3bfb",flexShrink:0}}/>}
+                  <span style={{fontSize:11,fontWeight:700,color:i<3?"#a78bfa":"#64748b"}}>{tag}</span>
+                  {i<3 && <span style={{fontSize:8,color:"#6c3bfb",fontWeight:800}}>HOT</span>}
+                </button>
               ))}
             </div>
-            <div style={{background:dark?"#2a2a2a":"#fff7ed",borderRadius:10,padding:"8px 12px",border:"1px solid #f59e0b44"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:2}}>💡 Pro Tip</div>
-              <div style={{fontSize:11,color:sub,lineHeight:1.5}}>Tap any tag to copy. Mix 🔥 trending + niche hashtags for maximum reach algorithm boost.</div>
+            <div style={{marginTop:12,background:"#1e293b",borderRadius:10,padding:"10px 12px",border:"1px solid #f59e0b33"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                <div style={{width:6,height:6,borderRadius:"50%",background:"#f59e0b",boxShadow:"0 0 6px #f59e0b"}}/>
+                <span style={{fontSize:10,color:"#f59e0b",fontWeight:800,letterSpacing:1}}>ALGORITHM TIP</span>
+              </div>
+              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.6}}>Mix 🔥 hot tags with niche-specific ones. First comment strategy: post 5 more hashtags right after publishing for 3x reach boost.</div>
             </div>
           </div>
         )}
 
-        {/* ── Competitor Insights ── */}
-        {activeSection==="competitor" && (
+        {/* Competitor */}
+        {activeSection==="comp" && (
           <div className="fade-in">
-            <div style={{fontSize:12,fontWeight:700,color:text,marginBottom:10}}>🏆 Top Performers</div>
-            {competitors.map((c,i)=>(
-              <div key={i} style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:12,padding:"10px 12px",marginBottom:8,border:`1px solid ${border}`}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                  <div style={{width:28,height:28,borderRadius:"50%",background:`hsl(${i*60+240},70%,55%)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:12}}>{c.name[1]?.toUpperCase()||"C"}</div>
-                  <div>
-                    <div style={{fontWeight:700,fontSize:12,color:text}}>{c.name}</div>
-                    <div style={{fontSize:10,color:"#22c55e",fontWeight:700}}>{c.metric}</div>
+            <div style={{fontSize:10,color:"#475569",letterSpacing:1,marginBottom:10}}>TOP PERFORMERS ANALYSIS</div>
+            {(COMPETITOR_INSIGHTS[platform]||[]).map((c,i)=>(
+              <div key={i} style={{background:"#1e293b",borderRadius:10,padding:"12px",marginBottom:8,border:`1px solid ${i===0?"#f59e0b33":"#334155"}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <div style={{width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,hsl(${i*120+200},70%,40%),hsl(${i*120+240},70%,55%))`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,color:"#fff",flexShrink:0}}>{(c.name.replace("@","")[0]||"C").toUpperCase()}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:800,fontSize:13,color:"#e2e8f0"}}>{c.name}</div>
+                    <div style={{fontSize:11,color:"#22c55e",fontWeight:700,marginTop:1}}>▲ {c.metric}</div>
                   </div>
+                  {i===0 && <div style={{padding:"2px 7px",background:"#f59e0b22",border:"1px solid #f59e0b55",borderRadius:4,fontSize:9,fontWeight:800,color:"#f59e0b"}}>#1</div>}
                 </div>
-                <div style={{fontSize:11,color:sub,lineHeight:1.5,paddingLeft:36}}>💡 {c.tip}</div>
+                <div style={{fontSize:11,color:"#64748b",lineHeight:1.5,paddingLeft:46,borderLeft:"2px solid #334155",marginLeft:18}}>
+                  {c.tip}
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ── Pro Tips ── */}
+        {/* Tips */}
         {activeSection==="tips" && (
           <div className="fade-in">
-            <div style={{fontSize:12,fontWeight:700,color:text,marginBottom:10}}>🚀 Platform Optimization Tips</div>
-            {seoTips.map((tip,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"8px 10px",background:dark?"#2a2a2a":"#f5f0ff",borderRadius:10,marginBottom:6,border:`1px solid ${border}`}}>
-                <div style={{width:20,height:20,borderRadius:6,background:accent,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+            <div style={{fontSize:10,color:"#475569",letterSpacing:1,marginBottom:10}}>PLATFORM OPTIMIZATION CHECKLIST</div>
+            {(PLATFORM_SEO_TIPS[platform]||[]).map((tip,i)=>(
+              <div key={i} style={{display:"flex",gap:10,padding:"8px 10px",background:"#1e293b",borderRadius:8,marginBottom:6,border:"1px solid #334155",alignItems:"flex-start"}}>
+                <div style={{width:22,height:22,borderRadius:6,background:`linear-gradient(135deg,#6c3bfb,#8b5cf6)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,boxShadow:"0 0 8px #6c3bfb44"}}>
                   <span style={{fontSize:10,fontWeight:900,color:"#fff"}}>{i+1}</span>
                 </div>
-                <span style={{fontSize:12,color:text,lineHeight:1.5}}>{tip}</span>
+                <span style={{fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{tip}</span>
               </div>
             ))}
-            <div style={{background:"linear-gradient(135deg,#6c3bfb22,#8b5cf622)",borderRadius:10,padding:"8px 12px",marginTop:4,border:`1px solid ${accent}44`}}>
-              <div style={{fontSize:11,fontWeight:700,color:accent,marginBottom:2}}>📈 Engagement Prediction</div>
-              <div style={{fontSize:12,color:text}}>
-                Based on your content score of <span style={{fontWeight:800,color:accent}}>{kw.overall}/100</span>, expected engagement rate:&nbsp;
-                <span style={{fontWeight:800,color:kw.overall>=80?"#22c55e":kw.overall>=60?"#f59e0b":"#ef4444"}}>
-                  {kw.overall>=80?"4.5–7.2%":kw.overall>=60?"2.1–4.4%":"0.5–2.0%"}
-                </span>
+            {/* Final summary card */}
+            <div style={{marginTop:10,background:"linear-gradient(135deg,#1a1035,#1e293b)",borderRadius:10,padding:"12px",border:"1px solid #6c3bfb44",textAlign:"center"}}>
+              <div style={{fontSize:10,color:"#6c3bfb",fontWeight:800,letterSpacing:2,marginBottom:6}}>OVERALL CONTENT GRADE</div>
+              <div style={{fontSize:38,fontWeight:900,color:grade.color,lineHeight:1,textShadow:`0 0 20px ${grade.color}66`}}>
+                {kw.overall>=85?"A":kw.overall>=70?"B":kw.overall>=50?"C":"D"}
               </div>
+              <div style={{fontSize:11,color:"#475569",marginTop:4}}>Score: {kw.overall}/100 · {grade.label}</div>
             </div>
           </div>
         )}
@@ -751,7 +819,7 @@ const FREE_CREDITS  = 2;   // first visit
 const AD_REWARD     = 2;   // credits per ad
 const COST_PER_GEN  = 2;   // credits per generation
 const AD_COOLDOWN   = 60;  // seconds between ads
-const AD_WATCH_TIME = 15;  // seconds to watch ad
+const AD_WATCH_TIME = 6;   // seconds to watch ad
 
 function getCredits() {
   try {
@@ -800,9 +868,10 @@ function AdModal({ onClose, onReward, dark }) {
     // Create fresh iframe
     const iframe = document.createElement("iframe");
     iframe.style.width = "100%";
-    iframe.style.minHeight = "200px";
+    iframe.style.height = "100%";
+    iframe.style.position = "absolute";
+    iframe.style.inset = "0";
     iframe.style.border = "none";
-    iframe.style.borderRadius = "12px";
     iframe.setAttribute("scrolling", "no");
     container.appendChild(iframe);
 
@@ -815,7 +884,7 @@ function AdModal({ onClose, onReward, dark }) {
       <head>
         <meta charset="UTF-8"/>
         <style>
-          body { margin:0; padding:0; display:flex; align-items:center; justify-content:center; min-height:200px; background:transparent; }
+          html,body { margin:0; padding:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#111; }
         </style>
       </head>
       <body>
@@ -891,67 +960,81 @@ function AdModal({ onClose, onReward, dark }) {
   const sub  = dark ? "#888"    : "#666";
 
   return (
-    <div style={{position:"fixed",inset:0,background:"#000b",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:bg,borderRadius:24,padding:24,width:"100%",maxWidth:360,boxShadow:"0 20px 60px #0006"}}>
+    <div style={{position:"fixed",inset:0,zIndex:9999,background:"#000",display:"flex",flexDirection:"column"}}>
 
-        {phase === "watching" && (
-          <>
-            <div style={{textAlign:"center",marginBottom:16}}>
-              <div style={{fontWeight:800,fontSize:18,color:text,marginBottom:4}}>Watch Ad</div>
-              <div style={{fontSize:13,color:sub}}>Watch for {AD_WATCH_TIME}s to earn {AD_REWARD} credits</div>
+      {phase === "watching" && (
+        <>
+          {/* Top bar */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#000",flexShrink:0,zIndex:2}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:"#6c3bfb",boxShadow:"0 0 8px #6c3bfb"}}/>
+              <span style={{fontSize:12,fontWeight:700,color:"#aaa",letterSpacing:1}}>SPONSORED</span>
             </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:22,fontWeight:900,color:"#6c3bfb",lineHeight:1}}>{timeLeft}</span>
+              <span style={{fontSize:12,color:"#555"}}>sec</span>
+              <button onClick={onClose} style={{background:"#ffffff15",border:"1px solid #333",borderRadius:8,cursor:"pointer",padding:"5px 10px",color:"#666",fontSize:12}}>✕</button>
+            </div>
+          </div>
 
-            {/* Adwixo ad container — iframe isolated, fresh every time */}
-            <div style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:16,minHeight:180,marginBottom:16,overflow:"hidden",border:`1px solid ${dark?"#444":"#e8e0ff"}`,position:"relative"}}>
-              <div id="adwixo-iframe-container" style={{width:"100%",minHeight:180}}/>
-              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",opacity:0.4,zIndex:-1}}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                <div style={{fontSize:11,color:sub,marginTop:6}}>Ad loading…</div>
+          {/* Progress bar — full width */}
+          <div style={{height:3,background:"#1a1a1a",flexShrink:0}}>
+            <div style={{height:"100%",background:"linear-gradient(90deg,#6c3bfb,#a78bfa)",width:`${((6-timeLeft)/6)*100}%`,transition:"width 1s linear",boxShadow:"0 0 6px #6c3bfb"}}/>
+          </div>
+
+          {/* Ad — fills entire remaining screen */}
+          <div style={{flex:1,position:"relative",background:"#111",overflow:"hidden"}}>
+            <div id="adwixo-iframe-container" style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+            {/* Fallback placeholder behind ad */}
+            <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",zIndex:-1}}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <div style={{fontSize:12,color:"#333",marginTop:10,letterSpacing:1}}>AD LOADING…</div>
+            </div>
+          </div>
+
+          {/* Bottom CTA */}
+          <div style={{background:"#000",padding:"12px 16px",flexShrink:0,borderTop:"1px solid #1a1a1a"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div>
+                <div style={{fontSize:12,color:"#555"}}>Watching earns you</div>
+                <div style={{fontSize:16,fontWeight:900,color:"#6c3bfb"}}>+{AD_REWARD} Credits</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6,background:"#6c3bfb15",border:"1px solid #6c3bfb44",borderRadius:10,padding:"8px 14px"}}>
+                {Array.from({length:6}).map((_,i)=>(
+                  <div key={i} style={{width:6,height:6,borderRadius:"50%",background:i<(6-timeLeft)?"#6c3bfb":"#333",transition:"background .3s",boxShadow:i<(6-timeLeft)?"0 0 6px #6c3bfb":"none"}}/>
+                ))}
               </div>
             </div>
-
-            {/* Progress bar */}
-            <div style={{background:dark?"#333":"#f0ebff",borderRadius:8,height:8,marginBottom:12,overflow:"hidden"}}>
-              <div style={{height:"100%",background:"linear-gradient(90deg,#6c3bfb,#8b5cf6)",borderRadius:8,width:`${((AD_WATCH_TIME-timeLeft)/AD_WATCH_TIME)*100}%`,transition:"width 1s linear"}}/>
-            </div>
-
-            <div style={{textAlign:"center",marginBottom:16}}>
-              <span style={{fontSize:28,fontWeight:900,color:"#6c3bfb"}}>{timeLeft}s</span>
-              <span style={{fontSize:13,color:sub,marginLeft:6}}>remaining</span>
-            </div>
-
-            <button onClick={onClose} style={{width:"100%",background:"none",border:`1px solid ${dark?"#444":"#ddd"}`,borderRadius:12,padding:"10px 0",fontSize:13,color:sub,cursor:"pointer"}}>
-              Cancel (lose reward)
-            </button>
-          </>
-        )}
-
-        {phase === "done" && (
-          <div style={{textAlign:"center"}}>
-            <div style={{width:72,height:72,borderRadius:"50%",background:"#22c55e22",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <div style={{fontWeight:800,fontSize:20,color:text,marginBottom:6}}>+{AD_REWARD} Credits Earned!</div>
-            <div style={{fontSize:13,color:sub,marginBottom:20}}>Thank you for watching</div>
-            <button onClick={claim} style={{width:"100%",background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"14px 0",fontSize:15,fontWeight:800,cursor:"pointer"}}>
-              Claim Credits
-            </button>
           </div>
-        )}
+        </>
+      )}
 
-        {phase === "cancelled" && (
-          <div style={{textAlign:"center"}}>
-            <div style={{width:72,height:72,borderRadius:"50%",background:"#ef444422",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </div>
-            <div style={{fontWeight:800,fontSize:18,color:text,marginBottom:6}}>Ad Cancelled</div>
-            <div style={{fontSize:13,color:sub,marginBottom:20}}>You switched tabs — reward lost</div>
-            <button onClick={onClose} style={{width:"100%",background:dark?"#2a2a2a":"#f5f0ff",border:"none",borderRadius:16,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:text}}>
-              Close
-            </button>
+      {phase === "done" && (
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000",padding:32}}>
+          <div style={{width:90,height:90,borderRadius:"50%",background:"#22c55e15",border:"2px solid #22c55e44",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,boxShadow:"0 0 30px #22c55e44"}}>
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-        )}
-      </div>
+          <div style={{fontWeight:900,fontSize:28,color:"#fff",marginBottom:8}}>+{AD_REWARD} Credits!</div>
+          <div style={{fontSize:14,color:"#555",marginBottom:36}}>Ad watched successfully</div>
+          <button onClick={claim} style={{width:"100%",maxWidth:300,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:18,padding:"16px 0",fontSize:16,fontWeight:900,cursor:"pointer",boxShadow:"0 8px 24px #6c3bfb44"}}>
+            Claim Credits →
+          </button>
+        </div>
+      )}
+
+      {phase === "cancelled" && (
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000",padding:32}}>
+          <div style={{width:90,height:90,borderRadius:"50%",background:"#ef444415",border:"2px solid #ef444444",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24}}>
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+          <div style={{fontWeight:900,fontSize:24,color:"#fff",marginBottom:8}}>Ad Cancelled</div>
+          <div style={{fontSize:13,color:"#555",marginBottom:36,textAlign:"center"}}>You switched tabs — reward was not granted</div>
+          <button onClick={onClose} style={{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}}>
+            Close
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }
