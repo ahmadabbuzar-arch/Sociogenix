@@ -76,6 +76,269 @@ function eng(score) {
   return {label:"Low",color:"#ef4444"};
 }
 
+// ─── VidIQ-style Data ─────────────────────────────────────────────────────────
+
+const BEST_TIMES = {
+  instagram: [{day:"Mon",time:"9:00 AM"},{day:"Tue",time:"11:00 AM"},{day:"Wed",time:"3:00 PM"},{day:"Thu",time:"7:00 PM"},{day:"Fri",time:"11:00 AM"},{day:"Sat",time:"10:00 AM"},{day:"Sun",time:"6:00 PM"}],
+  youtube:   [{day:"Mon",time:"2:00 PM"},{day:"Tue",time:"4:00 PM"},{day:"Wed",time:"9:00 AM"},{day:"Thu",time:"12:00 PM"},{day:"Fri",time:"3:00 PM"},{day:"Sat",time:"9:00 AM"},{day:"Sun",time:"11:00 AM"}],
+  facebook:  [{day:"Mon",time:"1:00 PM"},{day:"Tue",time:"3:00 PM"},{day:"Wed",time:"12:00 PM"},{day:"Thu",time:"8:00 PM"},{day:"Fri",time:"1:00 PM"},{day:"Sat",time:"12:00 PM"},{day:"Sun",time:"3:00 PM"}],
+  twitter:   [{day:"Mon",time:"8:00 AM"},{day:"Tue",time:"9:00 AM"},{day:"Wed",time:"12:00 PM"},{day:"Thu",time:"8:00 AM"},{day:"Fri",time:"8:00 AM"},{day:"Sat",time:"9:00 AM"},{day:"Sun",time:"10:00 AM"}],
+  linkedin:  [{day:"Mon",time:"7:30 AM"},{day:"Tue",time:"10:00 AM"},{day:"Wed",time:"8:00 AM"},{day:"Thu",time:"9:00 AM"},{day:"Fri",time:"9:00 AM"},{day:"Sat",time:"10:00 AM"},{day:"Sun",time:"7:00 AM"}],
+  tiktok:   [{day:"Mon",time:"6:00 AM"},{day:"Tue",time:"2:00 PM"},{day:"Wed",time:"9:00 AM"},{day:"Thu",time:"12:00 PM"},{day:"Fri",time:"5:00 AM"},{day:"Sat",time:"11:00 AM"},{day:"Sun",time:"7:00 PM"}],
+  pinterest: [{day:"Mon",time:"2:00 PM"},{day:"Tue",time:"9:00 PM"},{day:"Wed",time:"2:00 PM"},{day:"Thu",time:"9:00 PM"},{day:"Fri",time:"3:00 PM"},{day:"Sat",time:"8:00 PM"},{day:"Sun",time:"8:00 PM"}],
+};
+
+const COMPETITOR_INSIGHTS = {
+  instagram: [{name:"@natgeo",metric:"Avg 12K likes / post",tip:"Uses storytelling captions with single hashtag block"},{name:"@nasa",metric:"Avg 200K likes / post",tip:"High-quality images + educational hooks"}],
+  youtube:   [{name:"MrBeast",metric:"50M+ views avg",tip:"Title under 60 chars with a number/curiosity hook"},{name:"Kurzgesagt",metric:"10M+ views avg",tip:"SEO-rich descriptions with timestamps"}],
+  facebook:  [{name:"NatGeo FB",metric:"4M+ reach / post",tip:"Video posts get 3x more reach than images"},{name:"BuzzFeed",metric:"2M+ shares",tip:"Questions in captions drive comments"}],
+  twitter:   [{name:"@elonmusk",metric:"1B+ impressions",tip:"Short punchy tweets under 100 chars perform best"},{name:"@OpenAI",metric:"500K+ likes",tip:"Thread format boosts reach 40%"}],
+  linkedin:  [{name:"Gary Vee",metric:"500K+ reactions",tip:"Personal story + lesson format drives viral posts"},{name:"Microsoft",metric:"1M+ impressions",tip:"Data-driven posts with visuals get 2x engagement"}],
+  tiktok:   [{name:"@khaby.lame",metric:"80M+ followers",tip:"No text, reaction content = universal appeal"},{name:"@charlidamelio",metric:"150M followers",tip:"Post daily, trending audio boosts reach 5x"}],
+  pinterest: [{name:"@cupcakesandcashmere",metric:"10M monthly views",tip:"Vertical 2:3 ratio pins get 2x more saves"},{name:"@homeandgarden",metric:"8M monthly views",tip:"Rich keywords in title & first 100 chars"}],
+};
+
+const TRENDING_HASHTAGS = {
+  instagram: ["#Reels","#ExploreMore","#ContentCreator","#ViralPost","#InstaTrending","#InstaDaily","#GrowthHack","#DigitalMarketing","#SocialMediaTips","#CreatorEconomy"],
+  youtube:   ["#Shorts","#YouTubeTrends","#NewVideo","#Subscribe","#YouTubeCreator","#VideoMarketing","#Trending","#ViralVideo","#ContentStrategy","#GrowYourChannel"],
+  facebook:  ["#FacebookReels","#FBLive","#Trending","#ViralContent","#FacebookMarketing","#FBPage","#SocialMedia","#Engagement","#FacebookAds","#ContentCreation"],
+  twitter:   ["#TwitterTips","#Thread","#ViralTweet","#XSpaces","#TrendingNow","#ContentCreator","#GrowthHacking","#DigitalStrategy","#TechTwitter","#MarketingTwitter"],
+  linkedin:  ["#LinkedInTips","#ProfessionalGrowth","#CareerAdvice","#Leadership","#Entrepreneurship","#BusinessStrategy","#NetworkingTips","#PersonalBranding","#ContentMarketing","#ThoughtLeader"],
+  tiktok:   ["#ForYou","#FYP","#ViralTikTok","#TikTokTrending","#TikTokMadeMeBuyIt","#LearnOnTikTok","#ContentCreatorTips","#TikTokMarketing","#ViralContent","#TrendAlert"],
+  pinterest: ["DIY projects","Home decor ideas","Aesthetic inspiration","Budget-friendly tips","Meal prep ideas","Fashion inspo","Travel destinations","Fitness motivation","Photography tips","Creative ideas"],
+};
+
+const PLATFORM_SEO_TIPS = {
+  instagram: ["Use 25-30 hashtags for max reach","First 3 lines must hook the reader","Add location tag for 79% more engagement","Use carousel posts — 3x more reach","Post within 1 hour of peak time"],
+  youtube:   ["Title under 60 chars avoids truncation","Add keyword in first 25 words of description","Use 15 tags — mix broad & niche","Add timestamps for watch time boost","Custom thumbnail increases CTR by 36%"],
+  facebook:  ["Under 80 chars gets 66% more engagement","Emoji in first line boosts open rate","Videos auto-play — use captions","Post links in first comment, not caption","Ask a question to trigger comments"],
+  twitter:   ["Tweets with images get 89% more likes","Under 100 chars performs best","Don't use more than 2 hashtags","Post a thread for complex topics","Reply to comments in first 30 min"],
+  linkedin:  ["Start with a bold hook line","Use line breaks for readability","3-5 hashtags optimal on LinkedIn","Tag 2-3 relevant people","Article format for thought leadership"],
+  tiktok:   ["Use trending sound for 5x reach boost","Hook in first 2 seconds is critical","7-10 hashtags — mix FYP tags","Post 1-3x daily for algorithm favor","Vertical video 9:16 ratio required"],
+  pinterest: ["Vertical 2:3 ratio pins get saved more","Add keyword to title AND description","Rich Pins get 36% more engagement","Post 5-10 times per day ideal","Seasonal content planned 45 days ahead"],
+};
+
+// Keyword strength analyzer
+function analyzeKeywords(text="", platform) {
+  const words = text.toLowerCase().replace(/[^a-z0-9 #]/g,"").split(/\s+/).filter(w=>w.length>3);
+  const hashtags = (text.match(/#\w+/g)||[]);
+  const hasEmoji = /\p{Emoji}/u.test(text);
+  const len = text.length;
+  const platformLimits = {instagram:2200,youtube:500,facebook:63206,twitter:280,linkedin:3000,tiktok:2200,pinterest:500};
+  const optimalLen = {instagram:150,youtube:350,facebook:100,twitter:220,linkedin:280,tiktok:90,pinterest:150};
+  const limit = platformLimits[platform]||500;
+  const opt = optimalLen[platform]||200;
+  const lengthScore = Math.min(100, Math.round((1 - Math.abs(len - opt) / opt) * 100));
+  const hashScore = platform==="twitter" ? (hashtags.length<=2?100:60) : Math.min(100, hashtags.length*8);
+  const uniqueWords = new Set(words).size;
+  const diversityScore = Math.min(100, uniqueWords*5);
+  const emojiBonus = hasEmoji ? 15 : 0;
+  const overall = Math.round((lengthScore*0.3 + hashScore*0.35 + diversityScore*0.25 + emojiBonus*0.1));
+  return {overall: Math.min(100,overall), lengthScore, hashScore, diversityScore, hashtags: hashtags.length, charCount: len, limit};
+}
+
+function seoGrade(score) {
+  if(score>=85) return {label:"Excellent",color:"#22c55e",icon:"⚡"};
+  if(score>=70) return {label:"Good",color:"#3b82f6",icon:"👍"};
+  if(score>=50) return {label:"Fair",color:"#f59e0b",icon:"⚠️"};
+  return {label:"Needs Work",color:"#ef4444",icon:"❌"};
+}
+
+// ─── VidIQ Panel Components ───────────────────────────────────────────────────
+
+function ScoreBar({label, value, color, dark}) {
+  const bg = dark?"#2a2a2a":"#f3f0ff";
+  const text = dark?"#f0f0f0":"#1a1a2e";
+  return (
+    <div style={{marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+        <span style={{fontSize:11,color:dark?"#aaa":"#666"}}>{label}</span>
+        <span style={{fontSize:11,fontWeight:700,color}}>{value}%</span>
+      </div>
+      <div style={{height:5,background:bg,borderRadius:4,overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${value}%`,background:color,borderRadius:4,transition:"width .5s ease"}}/>
+      </div>
+    </div>
+  );
+}
+
+function VidIQPanel({platform, data, dark}) {
+  const [activeSection, setActiveSection] = useState("seo");
+  const text = dark?"#f0f0f0":"#1a1a2e";
+  const sub  = dark?"#888":"#666";
+  const card = dark?"#1e1e1e":"#fff";
+  const border= dark?"#333":"#e8e0ff";
+  const bg   = dark?"#161616":"#fafafa";
+  const accent = "#6c3bfb";
+
+  const allText = Object.values(data||{}).join(" ");
+  const kw = analyzeKeywords(allText, platform);
+  const grade = seoGrade(kw.overall);
+  const bestTimes = BEST_TIMES[platform]||[];
+  const todayIdx = new Date().getDay(); // 0=Sun
+  const dayOrder = [1,2,3,4,5,6,0]; // Mon→Sun
+  const competitors = COMPETITOR_INSIGHTS[platform]||[];
+  const trending = TRENDING_HASHTAGS[platform]||[];
+  const seoTips = PLATFORM_SEO_TIPS[platform]||[];
+
+  const tabs = [
+    {id:"seo",label:"SEO Score",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" strokeLinecap="round"/></svg>},
+    {id:"timing",label:"Best Time",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14" strokeLinecap="round"/></svg>},
+    {id:"trending",label:"Trending",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>},
+    {id:"competitor",label:"Insights",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>},
+    {id:"tips",label:"Pro Tips",icon:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3M6.343 6.343l-.707-.707M12 21v-1M17.657 17.657l-.707-.707M6.343 17.657l-.707.707M17.657 6.343l-.707-.707"/><circle cx="12" cy="12" r="4"/></svg>},
+  ];
+
+  return (
+    <div style={{background:bg,borderRadius:16,border:`1px solid ${border}`,marginTop:12,overflow:"hidden"}}>
+      {/* VidIQ Header */}
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:`linear-gradient(135deg,${accent}22,${accent}08)`,borderBottom:`1px solid ${border}`}}>
+        <div style={{width:26,height:26,borderRadius:8,background:accent,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <span style={{fontWeight:800,fontSize:13,color:accent}}>VidIQ Analytics</span>
+        <div style={{marginLeft:"auto",background:grade.color+"22",color:grade.color,border:`1px solid ${grade.color}55`,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:800}}>
+          {grade.icon} {grade.label}
+        </div>
+      </div>
+
+      {/* Tab Pills */}
+      <div style={{display:"flex",overflowX:"auto",padding:"8px 10px 0",gap:4,scrollbarWidth:"none"}}>
+        {tabs.map(t=>(
+          <button key={t.id} onClick={()=>setActiveSection(t.id)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:20,border:`1px solid ${activeSection===t.id?accent:border}`,background:activeSection===t.id?accent+"15":"transparent",cursor:"pointer",fontSize:11,fontWeight:700,color:activeSection===t.id?accent:sub,transition:"all .2s"}}>
+            {t.icon}{t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{padding:"12px 14px"}}>
+
+        {/* ── SEO Score ── */}
+        {activeSection==="seo" && (
+          <div className="fade-in">
+            <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:14}}>
+              <div style={{position:"relative",width:72,height:72,flexShrink:0}}>
+                <svg viewBox="0 0 36 36" style={{width:72,height:72,transform:"rotate(-90deg)"}}>
+                  <circle cx="18" cy="18" r="15" fill="none" stroke={dark?"#333":"#f0ebff"} strokeWidth="3"/>
+                  <circle cx="18" cy="18" r="15" fill="none" stroke={grade.color} strokeWidth="3" strokeDasharray={`${(kw.overall/100)*94.25} 94.25`} strokeLinecap="round"/>
+                </svg>
+                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                  <span style={{fontWeight:900,fontSize:18,color:grade.color,lineHeight:1}}>{kw.overall}</span>
+                  <span style={{fontSize:9,color:sub}}>/ 100</span>
+                </div>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14,color:text,marginBottom:2}}>SEO Score</div>
+                <div style={{fontSize:12,color:sub}}>{kw.charCount} chars · {kw.hashtags} hashtags</div>
+                <div style={{fontSize:11,color:grade.color,fontWeight:700,marginTop:3}}>{grade.icon} {grade.label}</div>
+              </div>
+            </div>
+            <ScoreBar label="Content Length" value={kw.lengthScore} color="#6c3bfb" dark={dark}/>
+            <ScoreBar label="Hashtag Strength" value={kw.hashScore} color="#f59e0b" dark={dark}/>
+            <ScoreBar label="Keyword Diversity" value={kw.diversityScore} color="#22c55e" dark={dark}/>
+            <div style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:10,padding:"8px 12px",marginTop:8}}>
+              <div style={{fontSize:11,fontWeight:700,color:accent,marginBottom:4}}>📊 Character Limit</div>
+              <div style={{height:5,background:dark?"#333":"#e8e0ff",borderRadius:4,overflow:"hidden",marginBottom:4}}>
+                <div style={{height:"100%",width:`${Math.min(100,(kw.charCount/kw.limit)*100)}%`,background:kw.charCount>kw.limit?"#ef4444":accent,borderRadius:4}}/>
+              </div>
+              <div style={{fontSize:10,color:sub}}>{kw.charCount} / {kw.limit} characters used</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Best Times ── */}
+        {activeSection==="timing" && (
+          <div className="fade-in">
+            <div style={{fontSize:12,fontWeight:700,color:text,marginBottom:10}}>📅 Best Posting Times (IST)</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+              {dayOrder.map((dayIdx,i)=>{
+                const item = bestTimes[i]||{};
+                const isToday = dayIdx === (todayIdx===0?6:todayIdx-1);
+                return (
+                  <div key={i} style={{textAlign:"center",padding:"6px 2px",borderRadius:8,background:isToday?accent+"22":dark?"#2a2a2a":"#f5f0ff",border:`1px solid ${isToday?accent:border}`,position:"relative"}}>
+                    <div style={{fontSize:9,fontWeight:700,color:isToday?accent:sub,marginBottom:2}}>{item.day}</div>
+                    <div style={{fontSize:8,color:isToday?accent:sub,lineHeight:1.2}}>{item.time?.replace(":00","")}</div>
+                    {isToday && <div style={{position:"absolute",top:-4,right:-4,width:8,height:8,borderRadius:"50%",background:accent}}/>}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{background:dark?"#2a2a2a":"#f0f9ff",borderRadius:10,padding:"8px 12px",marginTop:10,border:`1px solid ${accent}33`}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#3b82f6",marginBottom:3}}>⏰ Today's Best Window</div>
+              <div style={{fontSize:13,fontWeight:800,color:text}}>{bestTimes[todayIdx===0?6:todayIdx-1]?.time||"9:00 AM"} – {bestTimes[todayIdx===0?6:todayIdx-1]?.time?.includes("PM")?bestTimes[todayIdx===0?6:todayIdx-1]?.time?.replace(/(\d+):/, m=>String(parseInt(m)+2)+":"):"11:00 AM"}</div>
+              <div style={{fontSize:11,color:sub,marginTop:1}}>Highest audience online window</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Trending Hashtags ── */}
+        {activeSection==="trending" && (
+          <div className="fade-in">
+            <div style={{fontSize:12,fontWeight:700,color:text,marginBottom:10}}>🔥 Trending Now</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+              {trending.map((tag,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:20,background:i<3?accent+"22":dark?"#2a2a2a":"#f5f0ff",border:`1px solid ${i<3?accent:border}`,cursor:"pointer"}}
+                  onClick={()=>navigator.clipboard.writeText(tag).catch(()=>{})}>
+                  {i<3 && <svg width="8" height="8" viewBox="0 0 24 24" fill={accent}><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z"/></svg>}
+                  <span style={{fontSize:11,fontWeight:700,color:i<3?accent:sub}}>{tag}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{background:dark?"#2a2a2a":"#fff7ed",borderRadius:10,padding:"8px 12px",border:"1px solid #f59e0b44"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:2}}>💡 Pro Tip</div>
+              <div style={{fontSize:11,color:sub,lineHeight:1.5}}>Tap any tag to copy. Mix 🔥 trending + niche hashtags for maximum reach algorithm boost.</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Competitor Insights ── */}
+        {activeSection==="competitor" && (
+          <div className="fade-in">
+            <div style={{fontSize:12,fontWeight:700,color:text,marginBottom:10}}>🏆 Top Performers</div>
+            {competitors.map((c,i)=>(
+              <div key={i} style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:12,padding:"10px 12px",marginBottom:8,border:`1px solid ${border}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",background:`hsl(${i*60+240},70%,55%)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:12}}>{c.name[1]?.toUpperCase()||"C"}</div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:12,color:text}}>{c.name}</div>
+                    <div style={{fontSize:10,color:"#22c55e",fontWeight:700}}>{c.metric}</div>
+                  </div>
+                </div>
+                <div style={{fontSize:11,color:sub,lineHeight:1.5,paddingLeft:36}}>💡 {c.tip}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Pro Tips ── */}
+        {activeSection==="tips" && (
+          <div className="fade-in">
+            <div style={{fontSize:12,fontWeight:700,color:text,marginBottom:10}}>🚀 Platform Optimization Tips</div>
+            {seoTips.map((tip,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"8px 10px",background:dark?"#2a2a2a":"#f5f0ff",borderRadius:10,marginBottom:6,border:`1px solid ${border}`}}>
+                <div style={{width:20,height:20,borderRadius:6,background:accent,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                  <span style={{fontSize:10,fontWeight:900,color:"#fff"}}>{i+1}</span>
+                </div>
+                <span style={{fontSize:12,color:text,lineHeight:1.5}}>{tip}</span>
+              </div>
+            ))}
+            <div style={{background:"linear-gradient(135deg,#6c3bfb22,#8b5cf622)",borderRadius:10,padding:"8px 12px",marginTop:4,border:`1px solid ${accent}44`}}>
+              <div style={{fontSize:11,fontWeight:700,color:accent,marginBottom:2}}>📈 Engagement Prediction</div>
+              <div style={{fontSize:12,color:text}}>
+                Based on your content score of <span style={{fontWeight:800,color:accent}}>{kw.overall}/100</span>, expected engagement rate:&nbsp;
+                <span style={{fontWeight:800,color:kw.overall>=80?"#22c55e":kw.overall>=60?"#f59e0b":"#ef4444"}}>
+                  {kw.overall>=80?"4.5–7.2%":kw.overall>=60?"2.1–4.4%":"0.5–2.0%"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
 function CopyBtn({text, small}) {
   const [copied,setCopied] = useState(false);
   const copy = () => {
@@ -469,6 +732,7 @@ function ContentCard({platform, data, onRegen, dark}) {
         {data.title && <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Title</div><EditableText value={data.title}/></div>}
         {mainText && <div style={{marginBottom:10}}><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{data.tweet?"Tweet":data.post?"Post":"Caption"}</div><EditableText value={mainText}/></div>}
         {secondary && <div><div style={{fontSize:11,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{data.tags?"Tags":data.keywords?"Keywords":"Hashtags"}</div><div style={{fontSize:12,color:"#6c3bfb",lineHeight:1.9,wordBreak:"break-word"}}>{secondary}</div></div>}
+        <VidIQPanel platform={platform} data={data} dark={dark}/>
       </div>
     </div>
   );
@@ -487,7 +751,7 @@ const FREE_CREDITS  = 2;   // first visit
 const AD_REWARD     = 2;   // credits per ad
 const COST_PER_GEN  = 2;   // credits per generation
 const AD_COOLDOWN   = 60;  // seconds between ads
-const AD_WATCH_TIME = 6;  // seconds to watch ad
+const AD_WATCH_TIME = 15;  // seconds to watch ad
 
 function getCredits() {
   try {
@@ -525,40 +789,86 @@ function AdModal({ onClose, onReward, dark }) {
 
   // Trigger Adwixo interstitial fresh on every open
   React.useEffect(() => {
-    // Remove any old ad script to force reload
-    const oldScript = document.getElementById("adwixo-reload");
-    if (oldScript) oldScript.remove();
+    // Best approach: inject ad inside an iframe so it is completely isolated
+    // Each open = new iframe = fresh ad request, no caching issues
+    const container = document.getElementById("adwixo-iframe-container");
+    if (!container) return;
 
-    // Dynamically inject fresh Adwixo script so ad fires every time
-    const script = document.createElement("script");
-    script.id  = "adwixo-reload";
-    script.src = "https://adwixo.com/teg/js/interwixo.js?t=" + Date.now(); // cache bust
-    script.async = true;
-    script.setAttribute("zone", "98686");
-    document.body.appendChild(script);
+    // Clear previous
+    container.innerHTML = "";
 
-    // Also try calling show function if already loaded
-    try {
-      if (window.adwixo && typeof window.adwixo.show === "function") {
-        window.adwixo.show();
-      }
-      if (window.interwixo && typeof window.interwixo.show === "function") {
-        window.interwixo.show();
-      }
-    } catch(e) {}
+    // Create fresh iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.width = "100%";
+    iframe.style.minHeight = "200px";
+    iframe.style.border = "none";
+    iframe.style.borderRadius = "12px";
+    iframe.setAttribute("scrolling", "no");
+    container.appendChild(iframe);
+
+    // Write ad code inside iframe
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8"/>
+        <style>
+          body { margin:0; padding:0; display:flex; align-items:center; justify-content:center; min-height:200px; background:transparent; }
+        </style>
+      </head>
+      <body>
+        <script async zone="98686" src="https://adwixo.com/teg/js/interwixo.js?cb=${Date.now()}"><\/script>
+      </body>
+      </html>
+    `);
+    iframeDoc.close();
 
     return () => {
-      // cleanup on close
-      const s = document.getElementById("adwixo-reload");
-      if (s) s.remove();
+      if (container) container.innerHTML = "";
     };
   }, []);
 
-  // Tab switch detection
+  // Tab switch detection — ad click pe blur ignore karo
   React.useEffect(() => {
-    const onBlur = () => { if(phase==="watching") setPhase("cancelled"); };
+    let blurTimeout = null;
+
+    const onBlur = () => {
+      // 1 second wait karo — agar user ad click karke wapas aaya
+      // to focus event fire hoga aur blur cancel ho jaayega
+      blurTimeout = setTimeout(() => {
+        if (phase === "watching") setPhase("cancelled");
+      }, 1000);
+    };
+
+    const onFocus = () => {
+      // User wapas aaya — blur cancel karo (ad click tha, tab switch nahi)
+      if (blurTimeout) {
+        clearTimeout(blurTimeout);
+        blurTimeout = null;
+      }
+    };
+
+    const onVisibility = () => {
+      // Actual tab switch — page hidden hua
+      if (document.visibilityState === "hidden") {
+        // Turant cancel — yeh real tab switch hai
+        if (blurTimeout) clearTimeout(blurTimeout);
+        if (phase === "watching") setPhase("cancelled");
+      }
+    };
+
     window.addEventListener("blur", onBlur);
-    return () => window.removeEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      if (blurTimeout) clearTimeout(blurTimeout);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [phase]);
 
   // Countdown timer
@@ -591,12 +901,10 @@ function AdModal({ onClose, onReward, dark }) {
               <div style={{fontSize:13,color:sub}}>Watch for {AD_WATCH_TIME}s to earn {AD_REWARD} credits</div>
             </div>
 
-            {/* Adwixo ad container — unique key forces DOM remount */}
-            <div key={adKey.current} style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:16,minHeight:180,marginBottom:16,overflow:"hidden",border:`1px solid ${dark?"#444":"#e8e0ff"}`,position:"relative"}}>
-              {/* Adwixo renders here automatically via the script */}
-              <div id={"adwixo-container-"+adKey.current} style={{width:"100%",minHeight:180}}/>
-              {/* Fallback label while ad loads */}
-              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",opacity:0.5}}>
+            {/* Adwixo ad container — iframe isolated, fresh every time */}
+            <div style={{background:dark?"#2a2a2a":"#f5f0ff",borderRadius:16,minHeight:180,marginBottom:16,overflow:"hidden",border:`1px solid ${dark?"#444":"#e8e0ff"}`,position:"relative"}}>
+              <div id="adwixo-iframe-container" style={{width:"100%",minHeight:180}}/>
+              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",opacity:0.4,zIndex:-1}}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6c3bfb" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
                 <div style={{fontSize:11,color:sub,marginTop:6}}>Ad loading…</div>
               </div>
