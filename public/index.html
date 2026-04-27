@@ -23,6 +23,23 @@
   @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
   .pulse{animation:pulse .5s ease}
   .spin{animation:spin 1s linear infinite}
+
+  /* ── Unique Button Animations ── */
+  @keyframes rippleOut{0%{transform:scale(0);opacity:.6}100%{transform:scale(4);opacity:0}}
+  @keyframes shockwave{0%{box-shadow:0 0 0 0px #6c3bfb88}50%{box-shadow:0 0 0 12px #6c3bfb22}100%{box-shadow:0 0 0 20px #6c3bfb00}}
+  @keyframes glowPop{0%{filter:brightness(1)}40%{filter:brightness(1.35)}100%{filter:brightness(1)}}
+  @keyframes jelly{0%{transform:scale(1)}25%{transform:scaleX(.88) scaleY(1.12)}50%{transform:scaleX(1.08) scaleY(.94)}75%{transform:scaleX(.97) scaleY(1.03)}100%{transform:scale(1)}}
+  @keyframes magneticPull{0%{transform:scale(1)}30%{transform:scale(.9) rotate(-2deg)}60%{transform:scale(1.06) rotate(1deg)}100%{transform:scale(1) rotate(0)}}
+  @keyframes particle1{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(-18px,-22px) scale(0);opacity:0}}
+  @keyframes particle2{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(20px,-18px) scale(0);opacity:0}}
+  @keyframes particle3{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(16px,20px) scale(0);opacity:0}}
+  @keyframes particle4{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(-20px,16px) scale(0);opacity:0}}
+  @keyframes stampPress{0%{transform:scale(1)}20%{transform:scale(.82)}60%{transform:scale(1.07)}100%{transform:scale(1)}}
+  .btn-jelly{animation:jelly .45s cubic-bezier(.4,0,.2,1)}
+  .btn-magnetic{animation:magneticPull .4s cubic-bezier(.4,0,.2,1)}
+  .btn-stamp{animation:stampPress .35s cubic-bezier(.4,0,.2,1)}
+  .btn-glow{animation:glowPop .35s ease}
+  .btn-shock{animation:shockwave .5s ease-out}
 </style>
 </head>
 <body>
@@ -941,19 +958,79 @@ function EditableText({value}) {
   return <textarea value={val} onChange={e=>setVal(e.target.value)} style={{width:"100%",border:"1px solid #e8e0ff",borderRadius:8,padding:"8px 10px",fontSize:13,lineHeight:1.6,color:"#222",background:"#faf8ff",outline:"none",minHeight:72,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>;
 }
 
-function AnimBtn({onClick, children, style, title}) {
-  const [pressing, setPressing] = useState(false);
+// ── Animated Button ────────────────────────────────────────────────────────────
+function AnimBtn({onClick, children, style, title, type="primary", disabled}) {
+  const btnRef = useRef(null);
+
+  const configs = {
+    primary:   { scale: [1, 0.88, 1.06, 0.97, 1], color: "#6c3bfb", particles: ["#6c3bfb","#a78bfa","#fff","#8b5cf6"] },
+    secondary: { scale: [1, 0.90, 1.04, 1],        color: "#6c3bfb", particles: ["#6c3bfb","#38bdf8","#22c55e"] },
+    icon:      { scale: [1, 0.80, 1.08, 1],         color: "#6c3bfb", particles: ["#6c3bfb","#f59e0b"] },
+    copy:      { scale: [1, 0.92, 1.05, 1],         color: "#22c55e", particles: ["#22c55e","#34d399","#fff"] },
+    save:      { scale: [1, 0.88, 1.06, 0.97, 1],  color: "#E60023", particles: ["#E60023","#f87171","#ffd700"] },
+    danger:    { scale: [1, 0.82, 1.07, 1],         color: "#ef4444", particles: ["#ef4444","#f87171"] },
+  };
+
+  const handleClick = (e) => {
+    if (disabled) return;
+    const btn = btnRef.current;
+    if (!btn) { onClick && onClick(e); return; }
+
+    const cfg = configs[type] || configs.primary;
+    const rect = btn.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+
+    // 1. Scale keyframe animation via Web Animations API — always works
+    const scales = cfg.scale.map((s, i) => ({ transform: `scale(${s})`, offset: i / (cfg.scale.length - 1) }));
+    btn.animate(scales, { duration: 380, easing: "cubic-bezier(.4,0,.2,1)", fill: "none" });
+
+    // 2. Ripple span
+    const ripple = document.createElement("span");
+    ripple.style.cssText = `position:absolute;left:${cx}px;top:${cy}px;width:6px;height:6px;margin-left:-3px;margin-top:-3px;border-radius:50%;background:${cfg.color}88;pointer-events:none;z-index:20;`;
+    btn.appendChild(ripple);
+    ripple.animate([
+      { transform: "scale(1)", opacity: 0.7 },
+      { transform: "scale(7)", opacity: 0 }
+    ], { duration: 550, easing: "ease-out", fill: "forwards" }).onfinish = () => ripple.remove();
+
+    // 3. Particle burst — 5 dots fly outward
+    const angles = [0, 72, 144, 216, 288];
+    angles.forEach((angle, i) => {
+      const rad = (angle * Math.PI) / 180;
+      const dist = 28 + i * 4;
+      const tx = Math.cos(rad) * dist;
+      const ty = Math.sin(rad) * dist;
+      const dot = document.createElement("span");
+      const size = 5 + (i % 3);
+      dot.style.cssText = `position:absolute;left:50%;top:50%;width:${size}px;height:${size}px;margin-left:-${size/2}px;margin-top:-${size/2}px;border-radius:50%;background:${cfg.particles[i % cfg.particles.length]};pointer-events:none;z-index:21;`;
+      btn.appendChild(dot);
+      dot.animate([
+        { transform: "translate(0,0) scale(1)", opacity: 1 },
+        { transform: `translate(${tx}px,${ty}px) scale(0)`, opacity: 0 }
+      ], { duration: 420, easing: "ease-out", fill: "forwards", delay: i * 20 }).onfinish = () => dot.remove();
+    });
+
+    // 4. Glow flash on button
+    btn.animate([
+      { boxShadow: `0 0 0px 0px ${cfg.color}00` },
+      { boxShadow: `0 0 18px 6px ${cfg.color}66` },
+      { boxShadow: `0 0 0px 0px ${cfg.color}00` }
+    ], { duration: 400, easing: "ease-out" });
+
+    onClick && onClick(e);
+  };
+
   return (
     <button
+      ref={btnRef}
       title={title}
-      onMouseDown={()=>setPressing(true)}
-      onMouseUp={()=>setPressing(false)}
-      onMouseLeave={()=>setPressing(false)}
-      onTouchStart={()=>setPressing(true)}
-      onTouchEnd={()=>setPressing(false)}
-      onClick={onClick}
-      style={{...style, transform: pressing?"scale(0.88)":"scale(1)", transition:"transform .12s cubic-bezier(.4,0,.2,1), box-shadow .12s", boxShadow: pressing?"0 0 0 3px #6c3bfb33":"none"}}
-    >{children}</button>
+      disabled={disabled}
+      onClick={handleClick}
+      style={{ ...style, position: "relative", overflow: "hidden", cursor: disabled ? "default" : "pointer" }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -978,7 +1055,7 @@ function ContentCard({platform, data, onRegen, dark}) {
         <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <span style={{fontSize:11,background:e.color+"22",color:e.color,border:`1px solid ${e.color}55`,borderRadius:6,padding:"2px 8px",fontWeight:700}}>{e.label} {score}/10</span>
           <CopyBtn text={allText} small/>
-          <AnimBtn onClick={()=>onRegen(platform)} title="Regenerate" style={{background:"#6c3bfb11",border:"1px solid #6c3bfb44",borderRadius:8,cursor:"pointer",padding:"5px 10px",color:"#6c3bfb",display:"flex",alignItems:"center"}}>
+          <AnimBtn onClick={()=>onRegen(platform)} type="icon" title="Regenerate" style={{background:"#6c3bfb11",border:"1px solid #6c3bfb44",borderRadius:8,cursor:"pointer",padding:"5px 10px",color:"#6c3bfb",display:"flex",alignItems:"center"}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
           </AnimBtn>
         </div>
@@ -1099,31 +1176,41 @@ function AdModal({ onClose, onReward, dark }) {
     };
   }, []);
 
-  // Detect ad click via window blur (iframe click causes blur)
+  // Detect tab switch — ignore blur caused by ad iframe click
   React.useEffect(() => {
     let blurTimeout = null;
+    let recentAdClick = false;
 
     const onBlur = () => {
-      // Small delay — if focus comes back fast it's an iframe click (ad click)
+      // When iframe (ad) is clicked, window loses focus briefly then regains it
+      // We set a flag and wait — if focus returns within 3s it was an ad click
       blurTimeout = setTimeout(() => {
-        // blur lasted > 800ms = real tab switch = cancel
-        if (phase === "watching") setPhase("cancelled");
-      }, 800);
+        // Focus never came back in 3s = real tab switch = cancel
+        if (phase === "watching" && !recentAdClick) setPhase("cancelled");
+        blurTimeout = null;
+      }, 3000);
     };
 
     const onFocus = () => {
+      // User came back — could be from ad click or tab switch
       if (blurTimeout) {
-        // focus came back quickly = ad was clicked (not tab switch)
-        adClicked.current = true;
         clearTimeout(blurTimeout);
         blurTimeout = null;
       }
+      // Mark as ad clicked so countdown end gives reward
+      recentAdClick = true;
+      adClicked.current = true;
     };
 
+    // Only cancel on visibility hidden if no recent ad interaction
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") {
+      if (document.visibilityState === "hidden" && !recentAdClick) {
         if (blurTimeout) clearTimeout(blurTimeout);
         if (phase === "watching") setPhase("cancelled");
+      }
+      if (document.visibilityState === "visible") {
+        // Came back to page
+        recentAdClick = false;
       }
     };
 
@@ -1199,9 +1286,9 @@ function AdModal({ onClose, onReward, dark }) {
           </div>
           <div style={{fontWeight:900,fontSize:28,color:"#fff",marginBottom:8}}>+{AD_REWARD} Credits!</div>
           <div style={{fontSize:14,color:"#555",marginBottom:36}}>Ad watched successfully</div>
-          <button onClick={claim} style={{width:"100%",maxWidth:300,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:18,padding:"16px 0",fontSize:16,fontWeight:900,cursor:"pointer",boxShadow:"0 8px 24px #6c3bfb44"}}>
+          <AnimBtn onClick={claim} type="primary" style={{width:"100%",maxWidth:300,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:18,padding:"16px 0",fontSize:16,fontWeight:900,cursor:"pointer",boxShadow:"0 8px 24px #6c3bfb44"}}>
             Claim Credits →
-          </button>
+          </AnimBtn>
         </div>
       )}
 
@@ -1212,9 +1299,9 @@ function AdModal({ onClose, onReward, dark }) {
           </div>
           <div style={{fontWeight:900,fontSize:24,color:"#fff",marginBottom:8}}>Ad Cancelled</div>
           <div style={{fontSize:13,color:"#555",marginBottom:36,textAlign:"center"}}>You switched tabs — reward was not granted</div>
-          <button onClick={onClose} style={{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}}>
+          <AnimBtn onClick={onClose} type="secondary" style={{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}}>
             Close
-          </button>
+          </AnimBtn>
         </div>
       )}
 
@@ -1228,9 +1315,9 @@ function AdModal({ onClose, onReward, dark }) {
             You must <span style={{color:"#f59e0b",fontWeight:700}}>tap the ad</span> at least once<br/>to earn your reward.
           </div>
           <div style={{fontSize:12,color:"#333",marginBottom:32,textAlign:"center"}}>Watch again and tap the ad to claim credits.</div>
-          <button onClick={onClose} style={{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}}>
+          <AnimBtn onClick={onClose} type="secondary" style={{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}}>
             Close
-          </button>
+          </AnimBtn>
         </div>
       )}
 
@@ -1276,8 +1363,9 @@ function CreditBar({ credits, dark, onWatchAd }) {
       )}
 
       {/* Watch Ad button */}
-      <button
+      <AnimBtn
         onClick={handleWatchAd}
+        type="primary"
         disabled={locked}
         style={{
           marginLeft:"auto",
@@ -1296,7 +1384,6 @@ function CreditBar({ credits, dark, onWatchAd }) {
           cursor: locked ? "not-allowed" : "pointer",
           flexShrink:0,
           opacity: locked ? 0.7 : 1,
-          transition:"all .3s"
         }}>
         {locked ? (
           <>
@@ -1314,7 +1401,7 @@ function CreditBar({ credits, dark, onWatchAd }) {
             Watch Ad +{AD_REWARD}
           </>
         )}
-      </button>
+      </AnimBtn>
     </div>
   );
 }
@@ -1440,7 +1527,7 @@ function HomeScreen({dark}) {
         <button onClick={()=>setSelected(PLATFORMS.map(p=>p.id))} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:"#6c3bfb",fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Select All</button>
       </div>
       <div style={{padding:"12px 16px",borderTop:`1px solid ${border}`}}>
-        <AnimBtn onClick={handleGenerate} style={{width:"100%",background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"15px 24px",fontSize:15,fontWeight:800,cursor:"pointer",opacity:selected.length===0?.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <AnimBtn onClick={handleGenerate} type="primary" disabled={generating||selected.length===0} style={{width:"100%",background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"15px 24px",fontSize:15,fontWeight:800,cursor:"pointer",opacity:selected.length===0?.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           {generating
             ? <><svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeOpacity=".4"/><path d="M21 12a9 9 0 00-9-9" strokeLinecap="round"/></svg>Generating…</>
             : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" fill="#fff"/></svg>Generate for {selected.length} Platform{selected.length>1?"s":""}</>}
@@ -1512,13 +1599,13 @@ function HomeScreen({dark}) {
       </div>
       {/* Footer */}
       <div style={{display:"flex",gap:8,padding:"10px 16px",borderTop:`1px solid ${border}`}}>
-        <AnimBtn onClick={copyAll} style={{flex:1,background:card,color:"#6c3bfb",border:`1.5px solid #6c3bfb44`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        <AnimBtn onClick={copyAll} type="copy" style={{flex:1,background:card,color:"#6c3bfb",border:`1.5px solid #6c3bfb44`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy All
         </AnimBtn>
-        <AnimBtn onClick={saveToSaved} style={{flex:1,background:card,color:"#E60023",border:`1.5px solid #E6002344`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        <AnimBtn onClick={saveToSaved} type="save" style={{flex:1,background:card,color:"#E60023",border:`1.5px solid #E6002344`,borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>Save
         </AnimBtn>
-        <AnimBtn onClick={()=>setStep("platforms")} style={{flex:1,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        <AnimBtn onClick={()=>setStep("platforms")} type="primary" style={{flex:1,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:16,padding:"10px 0",fontSize:13,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>Redo
         </AnimBtn>
       </div>
