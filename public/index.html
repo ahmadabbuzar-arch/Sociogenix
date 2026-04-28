@@ -776,8 +776,7 @@ function setCooldownNow() {
 function AdModal({ onClose, onReward, dark }) {
   const [phase, setPhase]       = useState("watching");
   const [timeLeft, setTimeLeft] = useState(AD_WATCH_TIME);
-  const adClicked = React.useRef(false); // track if user clicked the ad
-
+  
   // Inject Adwixo ad script directly into the page (not iframe)
   React.useEffect(() => {
     const container = document.getElementById("adwixo-ad-slot");
@@ -796,29 +795,7 @@ function AdModal({ onClose, onReward, dark }) {
     };
   }, []);
 
-  // When user clicks ad (window loses focus) and comes back → give reward immediately
-  React.useEffect(() => {
-    let wentToAd = false;
-
-    const onBlur = () => {
-      if (phase === "watching") wentToAd = true;
-    };
-
-    const onFocus = () => {
-      if (wentToAd && phase === "watching") {
-        wentToAd = false;
-        adClicked.current = true;
-        setPhase("done"); // ✅ reward immediately on return
-      }
-    };
-
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [phase]);
+  // No tab detection needed
 
   // Countdown timer — when done, check if ad was clicked
 
@@ -826,11 +803,7 @@ function AdModal({ onClose, onReward, dark }) {
     if (phase !== "watching") return;
     if (timeLeft <= 0) {
       // Time up — check if user clicked the ad
-      if (adClicked.current) {
-        setPhase("done");
-      } else {
-        setPhase("notclicked");
-      }
+      setPhase("done");
       return;
     }
     const t = setTimeout(() => setTimeLeft(s => s - 1), 1000);
@@ -846,11 +819,9 @@ function AdModal({ onClose, onReward, dark }) {
 
   return (
     React.createElement("div",{"style":{position:"fixed",inset:0,zIndex:9999,background:"#000",display:"flex",flexDirection:"column"}},phase === "watching" && (
-        React.createElement(React.Fragment,null,React.createElement("div",{"style":{flex:1,position:"relative",background:"#000",overflow:"hidden"}},React.createElement("div",{"id":"adwixo-ad-slot","style":{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}),React.createElement("div",{"style":{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",zIndex:-1}},React.createElement("svg",{"width":"56","height":"56","viewBox":"0 0 24 24","fill":"none","stroke":"#222","strokeWidth":"1"},React.createElement("rect",{"x":"2","y":"3","width":"20","height":"14","rx":"2"}),React.createElement("path",{"d":"M8 21h8M12 17v4"})),React.createElement("div",{"style":{fontSize:12,color:"#222",marginTop:12,letterSpacing:2}},"AD LOADING…"))),React.createElement("div",{"style":{position:"absolute",bottom:20,left:0,right:0,zIndex:10,display:"flex",alignItems:"center",justifyContent:"center",gap:12}},React.createElement("button",{"onClick":onClose,"style":{background:"#000000bb",backdropFilter:"blur(8px)",border:"1px solid #ffffff22",borderRadius:10,padding:"8px 16px",color:"#aaa",fontSize:13,cursor:"pointer"}},"Cancel"),React.createElement("div",{"style":{width:46,height:46,borderRadius:"50%",background:"#000000bb",backdropFilter:"blur(8px)",border:"2px solid #6c3bfb",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 14px #6c3bfb77"}},React.createElement("span",{"style":{fontSize:18,fontWeight:900,color:"#6c3bfb"}},timeLeft)),React.createElement("div",{"style":{background:"#000000bb",backdropFilter:"blur(8px)",border:"1px solid #6c3bfb33",borderRadius:10,padding:"8px 12px",fontSize:11,color:"#6c3bfb",fontWeight:700}},"Tap ad to earn")))
+        React.createElement(React.Fragment,null,React.createElement("div",{"style":{flex:1,position:"relative",background:"#000",overflow:"hidden"}},React.createElement("div",{"id":"adwixo-ad-slot","style":{position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}),React.createElement("div",{"style":{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",pointerEvents:"none",zIndex:-1}},React.createElement("svg",{"width":"56","height":"56","viewBox":"0 0 24 24","fill":"none","stroke":"#222","strokeWidth":"1"},React.createElement("rect",{"x":"2","y":"3","width":"20","height":"14","rx":"2"}),React.createElement("path",{"d":"M8 21h8M12 17v4"})),React.createElement("div",{"style":{fontSize:12,color:"#222",marginTop:12,letterSpacing:2}},"AD LOADING…"))),React.createElement("div",{"style":{position:"absolute",bottom:20,left:0,right:0,zIndex:10,display:"flex",alignItems:"center",justifyContent:"center",gap:12}},React.createElement("button",{"onClick":onClose,"style":{background:"#000000bb",backdropFilter:"blur(8px)",border:"1px solid #ffffff22",borderRadius:10,padding:"8px 16px",color:"#aaa",fontSize:13,cursor:"pointer"}},"Cancel"),React.createElement("div",{"style":{width:46,height:46,borderRadius:"50%",background:"#000000bb",backdropFilter:"blur(8px)",border:"2px solid #6c3bfb",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 14px #6c3bfb77"}},React.createElement("span",{"style":{fontSize:18,fontWeight:900,color:"#6c3bfb"}},timeLeft)),))
       ),phase === "done" && (
         React.createElement("div",{"style":{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000",padding:32}},React.createElement("div",{"style":{width:90,height:90,borderRadius:"50%",background:"#22c55e15",border:"2px solid #22c55e44",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,boxShadow:"0 0 30px #22c55e44"}},React.createElement("svg",{"width":"44","height":"44","viewBox":"0 0 24 24","fill":"none","stroke":"#22c55e","strokeWidth":"2.5","strokeLinecap":"round"},React.createElement("polyline",{"points":"20 6 9 17 4 12"}))),React.createElement("div",{"style":{fontWeight:900,fontSize:28,color:"#fff",marginBottom:8}},"+",AD_REWARD,"Credits!"),React.createElement("div",{"style":{fontSize:14,color:"#555",marginBottom:36}},"Ad watched successfully"),React.createElement(AnimBtn,{"onClick":claim,"type":"primary","style":{width:"100%",maxWidth:300,background:"linear-gradient(135deg,#6c3bfb,#8b5cf6)",color:"#fff",border:"none",borderRadius:18,padding:"16px 0",fontSize:16,fontWeight:900,cursor:"pointer",boxShadow:"0 8px 24px #6c3bfb44"}},"Claim Credits →"))
-      ),phase === "notclicked" && (
-        React.createElement("div",{"style":{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#000",padding:32}},React.createElement("div",{"style":{width:90,height:90,borderRadius:"50%",background:"#f59e0b15",border:"2px solid #f59e0b44",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,boxShadow:"0 0 24px #f59e0b33"}},React.createElement("svg",{"width":"44","height":"44","viewBox":"0 0 24 24","fill":"none","stroke":"#f59e0b","strokeWidth":"2.5","strokeLinecap":"round"},React.createElement("path",{"d":"M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"}),React.createElement("line",{"x1":"12","y1":"9","x2":"12","y2":"13"}),React.createElement("line",{"x1":"12","y1":"17","x2":"12.01","y2":"17"}))),React.createElement("div",{"style":{fontWeight:900,fontSize:24,color:"#fff",marginBottom:10}},"Ad Not Clicked"),React.createElement("div",{"style":{fontSize:13,color:"#555",marginBottom:8,textAlign:"center",lineHeight:1.7}},"You must",React.createElement("span",{"style":{color:"#f59e0b",fontWeight:700}},"tap the ad"),"at least once",React.createElement("br",null),"to earn your reward."),React.createElement("div",{"style":{fontSize:12,color:"#333",marginBottom:32,textAlign:"center"}},"Watch again and tap the ad to claim credits."),React.createElement(AnimBtn,{"onClick":onClose,"type":"secondary","style":{width:"100%",maxWidth:300,background:"#1a1a1a",border:"1px solid #333",borderRadius:18,padding:"14px 0",fontSize:14,fontWeight:700,cursor:"pointer",color:"#aaa"}},"Close"))
       ))
   );
 }
